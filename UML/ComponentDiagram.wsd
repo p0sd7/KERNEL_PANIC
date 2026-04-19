@@ -1,0 +1,11 @@
+@startuml
+package "Game Engine" {
+    [Game] <<component>>
+    [LogicSystem] <<component>>
+    [RenderSystem] <<component>>
+    
+    interface "Input API" as IInput
+    [InputSystem] -up- IInput
+    [Game] ..> IInput : use
+}
+@enduml

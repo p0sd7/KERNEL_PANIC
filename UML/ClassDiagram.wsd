@@ -1,0 +1,102 @@
+@startuml ClassDiagram
+title Диаграмма Классов (v5.4) — Исправленная Иерархия
+
+' === ИНТЕРФЕЙСЫ ===
+interface IRenderable {
+    + symbol(): char
+    + position(): Pair
+}
+
+interface IGameContext {
+    + ChangeState(newState: IGameState*): void
+    + mutable_resources(): ResourceSystem&
+    + mutable_player(): Player&
+}
+
+interface IGameState {
+    + HandleInput(input: string): void
+    + Update(delta: float): void
+    + Draw(renderer: RenderSystem&): void
+    + SetContext(game: IGameContext*): void
+}
+
+' === БАЗОВЫЕ КЛАССЫ МОДЕЛИ ===
+abstract class Entity implements IRenderable {
+    # x_: int
+    # y_: int
+    + position(): Pair
+}
+
+class Player extends Entity {
+    - hp_: int
+    - stats_: Stats
+    - inventory_: Inventory
+    + TakeDamage(amt: int): void
+    + mutable_inventory(): Inventory&
+    + symbol(): char
+}
+
+class Enemy extends Entity {
+    - id_: string
+    - hp_: int
+    + TakeDamage(amt: int): void
+    + symbol(): char
+}
+
+' === ИНВЕНТАРЬ ===
+class Item {
+    - id_: string
+    - name_: string
+    + Use(target: Player&): void
+}
+
+class Inventory {
+    - items_: vector<unique_ptr<Item>>
+    + AddItem(item: unique_ptr<Item>): bool
+    + items(): const vector<unique_ptr<Item>>&
+}
+
+' === СИСТЕМЫ ===
+class Game implements IGameContext {
+    - current_state_: unique_ptr<IGameState>
+    - player_: unique_ptr<Player>
+    - resources_: ResourceSystem
+    - renderer_: RenderSystem
+    + Run(): void
+}
+
+class ResourceSystem {
+    + CreateEnemy(id: string): unique_ptr<Enemy>
+    + CreateItem(id: string): unique_ptr<Item>
+}
+
+' === СОСТОЯНИЯ (IoC) ===
+abstract class BaseState implements IGameState {
+    # context_: IGameContext*
+    + SetContext(game: IGameContext*): void
+}
+
+class InventoryState extends BaseState {
+    - selected_slot_: int
+    + Draw(renderer: RenderSystem&): void
+}
+
+class ExplorationState extends BaseState {
+    + Draw(renderer: RenderSystem&): void
+}
+
+' === СВЯЗИ ===
+Game *-- IGameState
+Game *-- Player
+Game *-- ResourceSystem
+
+Player *-- Inventory
+Inventory *-- Item
+
+' InventoryState теперь берет инвентарь через контекст
+InventoryState ..> Inventory : "<<uses>>"
+' Ресурсная система поставляет объекты
+ResourceSystem ..> Item : "<<create>>"
+ResourceSystem ..> Enemy : "<<create>>"
+
+@enduml

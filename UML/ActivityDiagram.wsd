@@ -1,3 +1,45 @@
 @startuml ActivityDiagram
+title Activity Diagram — Игровой цикл KERNEL_PANIC
 
+start
+
+:Инициализация систем (Game, ResourceSystem, RenderSystem);
+:Загрузка начального состояния (ExplorationState);
+
+repeat
+    :Ожидание и чтение ввода (InputSystem);
+    
+    partition "IGameState Logic" {
+        :Передача ввода в текущее состояние (HandleInput);
+        
+        if (Ввод требует смены состояния?) then (да)
+            :Game::ChangeState(newState);
+        else (нет)
+            :Выполнение Update(delta);
+            
+            if (Объект требует создания?) then (да)
+                :Запрос к ResourceSystem;
+                :Создание Entity/Item;
+            endif
+            
+            if (Произошел бой?) then (да)
+                :Вызов CombatSystem;
+                :Расчет урона (TakeDamage);
+            endif
+        endif
+    }
+
+    partition "RenderSystem" {
+        :Очистка экрана;
+        :Сбор всех IRenderable объектов;
+        :Отрисовка кадра (Draw);
+    }
+
+repeat while (Игра продолжается?) is (да)
+->нет;
+
+:Освобождение ресурсов;
+:Завершение работы;
+
+stop
 @enduml

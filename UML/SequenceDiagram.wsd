@@ -1,2 +1,61 @@
 @startuml SequenceDiagram
+title Sequence Diagram — One Iteration of Game Loop
+
+participant "Main/OS" as OS
+participant "Game" as G
+participant "InputSystem" as Input
+participant "current_state : IGameState" as State
+participant "CombatSystem" as Combat
+participant "RenderSystem" as Render
+
+activate G
+
+note over G : loop while (running)
+
+G -> Input : PollEvents()
+activate Input
+Input --> G : commands_queue
+deactivate Input
+
+G -> State : HandleInput(commands)
+activate State
+    note right: Состояние обрабатывает\nнажатия клавиш
+State --> G
+deactivate State
+
+G -> State : Update(delta)
+activate State
+    State -> State : Internal Logic
+    
+    opt Если произошло боевое событие
+        State -> Combat : ResolveAction(entities)
+        activate Combat
+        Combat --> State : result
+        deactivate Combat
+    end
+    
+State --> G
+deactivate State
+
+G -> Render : Clear()
+activate Render
+deactivate Render
+
+G -> State : Draw(renderer)
+activate State
+    State -> Render : DrawEntity(player)
+    State -> Render : DrawEntity(enemies)
+    State -> Render : DrawUI()
+State --> G
+deactivate State
+
+G -> Render : Present()
+activate Render
+note right: Вывод кадра на экран
+deactivate Render
+
+G -> OS : Sleep/Yield (Frame limiting)
+
+note over G : end loop
+
 @enduml

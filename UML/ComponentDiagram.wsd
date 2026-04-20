@@ -1,11 +1,35 @@
-@startuml
+@startuml ComponentDiagram  
+title Архитектура подсистем KERNEL_PANIC (UML Component Diagram)
+
+skinparam componentStyle uml2
+
 package "Game Engine" {
-    [Game] <<component>>
-    [LogicSystem] <<component>>
-    [RenderSystem] <<component>>
     
-    interface "Input API" as IInput
-    [InputSystem] -up- IInput
-    [Game] ..> IInput : use
+    [Game] <<component>> as game
+    [LogicSystem] <<component>> as logic
+    [CombatSystem] <<component>> as combat
+    [InputSystem] <<component>> as input
+    [RenderSystem] <<component>> as render
+    [ResourceSystem] <<component>> as resource
+    
+    database "Game Data (CSV/JSON)" as csv
+    
+    ' Описание связей (Dependency)
+    game ..> input : <<use>>
+    game ..> logic : <<update>>
+    game ..> render : <<call>>
+    
+    logic ..> combat : <<trigger>>
+    logic ..> resource : <<request>>
+    
+    combat ..> resource : <<request>>
+    
+    resource ..> csv : <<access/parse>>
 }
+
+note right of game
+  Точка входа. 
+  Управляет главным циклом Run()
+end note
+
 @enduml

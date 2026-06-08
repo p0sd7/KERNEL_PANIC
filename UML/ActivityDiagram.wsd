@@ -1,45 +1,63 @@
 @startuml ActivityDiagram
-title Activity Diagram — Игровой цикл KERNEL_PANIC
 
 start
 
-:Инициализация систем (Game, ResourceSystem, RenderSystem);
-:Загрузка начального состояния (ExplorationState);
+:Инициализация ncurses;
+:Загрузка CSV в DataStore;
+:Создание сущности игрока;
+:Установка ExplorationState;
 
 repeat
-    :Ожидание и чтение ввода (InputSystem);
+    :InputSystem::pollEvents() → InputCommand;
     
-    partition "IGameState Logic" {
-        :Передача ввода в текущее состояние (HandleInput);
+    if (Команда QUIT?) then (да)
+        :Game::quit();
+        break;
+    endif
+    
+    :current_state_->handleInput(cmd, data);
+    
+    if (Произошёл переход состояния?) then (да)
+        :Game::changeState(new_state);
+    else (нет)
+        :current_state_->update(delta, data);
         
-        if (Ввод требует смены состояния?) then (да)
-            :Game::ChangeState(newState);
-        else (нет)
-            :Выполнение Update(delta);
-            
-            if (Объект требует создания?) then (да)
-                :Запрос к ResourceSystem;
-                :Создание Entity/Item;
-            endif
-            
-            if (Произошел бой?) then (да)
-                :Вызов CombatSystem;
-                :Расчет урона (TakeDamage);
-            endif
+        if (Состояние == ExplorationState и show_inventory?) then (да)
+            :RenderSystem::drawInventory(data, player_idx);
         endif
-    }
+        
+        if (Начат бой?) then (да)
+            :Game::changeState(CombatState);
+            note right
+                Бой идёт в CombatState.
+                Он сам обрабатывает ввод,
+                вызывает CombatSystem,
+                и по окончании вызывает
+                Game::changeState(...)
+            end note
+        endif
+        
+        if (Текущее состояние == GameOverState?) then (да)
+            :Ожидание любой клавиши;
+            :Game::quit();
+            break;
+        endif
+        
+        if (Текущее состояние == FinalState и выбран ДА?) then (да)
+            :Сброс PlayerData;
+            :Game::changeState(ExplorationState);
+        endif
+    endif
+    
+    :RenderSystem::clear();
+    :current_state_->draw(renderer, data);
+    :RenderSystem::present();
+    :sleep(16ms);
 
-    partition "RenderSystem" {
-        :Очистка экрана;
-        :Сбор всех IRenderable объектов;
-        :Отрисовка кадра (Draw);
-    }
-
-repeat while (Игра продолжается?) is (да)
+repeat while (running_ == true) is (да)
 ->нет;
 
-:Освобождение ресурсов;
-:Завершение работы;
-
+:RenderSystem::shutdown();
 stop
+
 @enduml

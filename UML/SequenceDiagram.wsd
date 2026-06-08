@@ -1,61 +1,70 @@
 @startuml SequenceDiagram
-title Sequence Diagram — One Iteration of Game Loop
+title Sequence Diagram — Одна итерация игрового цикла KERNEL_PANIC
 
 participant "Main/OS" as OS
-participant "Game" as G
+participant "Game" as Game
 participant "InputSystem" as Input
 participant "current_state : IGameState" as State
+participant "DataStore" as Data
 participant "CombatSystem" as Combat
 participant "RenderSystem" as Render
 
-activate G
+activate Game
 
-note over G : loop while (running)
+note over Game : loop while (running)
 
-G -> Input : PollEvents()
+Game -> Input: pollEvents()
 activate Input
-Input --> G : commands_queue
+Input --> Game: InputCommand
 deactivate Input
 
-G -> State : HandleInput(commands)
+Game -> State: handleInput(cmd, data)
 activate State
-    note right: Состояние обрабатывает\nнажатия клавиш
-State --> G
-deactivate State
 
-G -> State : Update(delta)
-activate State
-    State -> State : Internal Logic
-    
-    opt Если произошло боевое событие
-        State -> Combat : ResolveAction(entities)
-        activate Combat
-        Combat --> State : result
-        deactivate Combat
+State -> Data: чтение/изменение сущностей
+State -> State: внутренняя логика
+
+alt Команда = MOVE и есть объект NPC
+    State -> Game: changeState(DialogState)
+    Game -> State: (состояние заменено)
+else Команда = MOVE и есть объект BOSS
+    State -> Game: changeState(CombatState)
+    Game -> State: (состояние заменено)
+else Команда = TEXT_INPUT (в CombatState)
+    State -> Combat: applyScript(data, player_idx, script_id, enemy_indices, log)
+    activate Combat
+    Combat -> Data: чтение/изменение HP, эффектов
+    Combat --> State: результат (победа/поражение)
+    deactivate Combat
+    alt победа
+        State -> Game: changeState(ExplorationState)
+    else поражение
+        State -> Game: changeState(GameOverState)
     end
-    
-State --> G
+end
+
+State --> Game
 deactivate State
 
-G -> Render : Clear()
-activate Render
-deactivate Render
-
-G -> State : Draw(renderer)
+Game -> State: update(delta, data)
 activate State
-    State -> Render : DrawEntity(player)
-    State -> Render : DrawEntity(enemies)
-    State -> Render : DrawUI()
-State --> G
+State -> Data: возможные изменения (например, восстановление после боя)
+State --> Game
 deactivate State
 
-G -> Render : Present()
-activate Render
-note right: Вывод кадра на экран
-deactivate Render
+Game -> Render: clear()
+Game -> State: draw(renderer, data)
+activate State
+State -> Render: drawExploration / drawCombat / drawDialog / drawInventory (если не CombatState)
+State --> Game
+deactivate State
 
-G -> OS : Sleep/Yield (Frame limiting)
+Game -> Render: present()
+Game -> OS: sleep(16ms)
 
-note over G : end loop
+note over Game : end loop
+
+Game -> Render: shutdown()
+deactivate Game
 
 @enduml

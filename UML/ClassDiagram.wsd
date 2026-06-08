@@ -1,102 +1,287 @@
 @startuml ClassDiagram
-title Диаграмма Классов (v5.4) — Исправленная Иерархия
+title Class Diagram — KERNEL_PANIC (Data-Oriented Design, финальная версия с отображением инвентаря)
 
-' === ИНТЕРФЕЙСЫ ===
-interface IRenderable {
-    + symbol(): char
-    + position(): Pair
+' ======================== POD Structures ========================
+struct EntityData {
+    + int id
+    + EntityType type
+    + int x
+    + int y
+    + char symbol
+    + int hp
+    + int max_hp
+    + int damage
+    + int script_id
+    + int heal_value
+    + int npc_id
+    + int enemy_id
+    + int trap_damage
 }
 
-interface IGameContext {
-    + ChangeState(newState: IGameState*): void
-    + mutable_resources(): ResourceSystem&
-    + mutable_player(): Player&
+enum EntityType {
+    PLAYER
+    NPC
+    ITEM
+    BOSS
+    TRAP
+    EXIT
 }
 
+struct PlayerData {
+    + int entity_index
+    + int memory_percent
+    + vector<int> inventory_script_ids
+    + int current_location_id
+}
+
+struct EnemyTemplate {
+    + int id
+    + string name
+    + string ascii_display
+    + int hp
+    + int damage
+    + EnemyType enemy_type
+    + SpecialAi special_ai
+    + string dialogue_on_spawn
+}
+
+enum EnemyType {
+    BOSS
+    RANDOM
+}
+
+enum SpecialAi {
+    NONE
+    BLOCK_RANDOM_SCRIPT
+    COPY_LAST_SCRIPT
+    PRETEND_HARMLESS
+    BLOCK_EVERY_2_TURNS
+}
+
+struct ScriptData {
+    + int id
+    + string name_for_input
+    + int damage
+    + int self_damage
+    + int defense_percent
+    + bool stun_target
+    + string available_after_boss
+}
+
+struct DialogueLine {
+    + int id
+    + int npc_id
+    + int condition_memory_min
+    + int condition_memory_max
+    + int condition_fragments
+    + string text
+}
+
+struct LocationData {
+    + int id
+    + string name
+    + string ascii_background
+    + char exit_symbol
+    + bool forced_combat_on_enter
+    + int next_location_id
+}
+
+struct MapObjectData {
+    + int id
+    + int location_id
+    + string type
+    + char symbol
+    + int x
+    + int y
+    + string ref_id
+    + string special_condition
+}
+
+struct PuzzleData {
+    + int id
+    + int location_id
+    + string type
+    + string solution_data
+    + string reward_item_id
+    + string wrong_penalty
+}
+
+' ======================== Data Store ========================
+class DataStore {
+    - vector<EntityData> entities_
+    - PlayerData player_
+    - map<int, EnemyTemplate> enemy_templates_
+    - map<int, ScriptData> scripts_
+    - map<int, DialogueLine> dialogues_
+    - map<int, LocationData> locations_
+    - map<int, vector<MapObjectData>> map_objects_
+    - map<int, PuzzleData> puzzles_
+    + loadAll(path: string) : void
+    + createEntity(templ: EntityData, x: int, y: int) : int
+    + removeEntity(index: int) : void
+    + getEntity(index: int) : EntityData&
+    + getEnemyTemplate(id: int) : EnemyTemplate&
+    + getScriptById(id: int) : ScriptData*
+    + getScriptByName(input: string) : ScriptData*
+    + getDialoguesForNPC(npc_id: int, memory: int, fragments: int) : vector<DialogueLine>
+    + getLocationId(name: string) : int
+    + getMapObjects(location_id: int) : vector<MapObjectData>
+    + addScriptToInventory(script_id: int) : void
+    + hasScriptInInventory(script_id: int) : bool
+    + getInventoryScripts() : const vector<int>&
+}
+
+' ======================== Systems (static methods) ========================
+class ExplorationSystem <<system>> {
+    + {static} movePlayer(data: DataStore&, player_idx: int, dx: int, dy: int) : void
+    + {static} tryInteract(data: DataStore&, player_idx: int, obj_idx: int) : int
+    + {static} loadLocation(data: DataStore&, location_id: int, player_idx: int) : void
+}
+
+class CombatSystem <<system>> {
+    + {static} startCombat(data: DataStore&, player_idx: int, enemy_indices: vector<int>) : void
+    + {static} applyScript(data: DataStore&, player_idx: int, script_id: int, enemy_indices: vector<int>&, log: string&) : bool
+    + {static} enemyTurn(data: DataStore&, player_idx: int, enemy_indices: vector<int>&, log: string&) : void
+    + {static} isCombatOver(enemy_indices: vector<int>&, data: DataStore&) : bool
+    + {static} getTotalEnemyHp(enemy_indices: vector<int>&, data: DataStore&) : int
+    + {static} healAfterCombat(data: DataStore&, player_idx: int, enemy_indices: vector<int>&) : void
+}
+
+class DialogSystem <<system>> {
+    + {static} startDialog(data: DataStore&, npc_entity_idx: int, out_lines: vector<string>&) : void
+}
+
+class PuzzleSystem <<system>> {
+    + {static} trySolve(data: DataStore&, puzzle_id: int, input: string) : bool
+    + {static} applyPenalty(data: DataStore&, player_idx: int, penalty: string) : void
+}
+
+class RenderSystem <<system>> {
+    + {static} init() : void
+    + {static} shutdown() : void
+    + {static} clear() : void
+    + {static} drawExploration(data: DataStore&, player_idx: int, screen_w: int, screen_h: int) : void
+    + {static} drawCombat(data: DataStore&, player_idx: int, enemy_indices: vector<int>&, log: string) : void
+    + {static} drawDialog(lines: vector<string>) : void
+    + {static} drawInventory(data: DataStore&, player_idx: int) : void
+    + {static} drawGameOver() : void
+    + {static} drawFinal(prompt: string) : void
+    + {static} present() : void
+}
+
+class InputSystem <<system>> {
+    + {static} pollEvents() : InputCommand
+}
+
+' ==================== Helper structs for Input ====================
+struct InputCommand {
+    + type: InputType
+    + dx: int
+    + dy: int
+    + text: string
+}
+
+enum InputType {
+    MOVE
+    TEXT_INPUT
+    CONFIRM
+    QUIT
+    INVENTORY_TOGGLE
+}
+
+' ======================== State Machine ========================
 interface IGameState {
-    + HandleInput(input: string): void
-    + Update(delta: float): void
-    + Draw(renderer: RenderSystem&): void
-    + SetContext(game: IGameContext*): void
+    + handleInput(cmd: InputCommand, data: DataStore&) : void
+    + update(delta: float, data: DataStore&) : void
+    + draw(renderer: RenderSystem, data: DataStore&) : void
+    + setContext(game: Game*) : void
 }
 
-' === БАЗОВЫЕ КЛАССЫ МОДЕЛИ ===
-abstract class Entity implements IRenderable {
-    # x_: int
-    # y_: int
-    + position(): Pair
-}
-
-class Player extends Entity {
-    - hp_: int
-    - stats_: Stats
-    - inventory_: Inventory
-    + TakeDamage(amt: int): void
-    + mutable_inventory(): Inventory&
-    + symbol(): char
-}
-
-class Enemy extends Entity {
-    - id_: string
-    - hp_: int
-    + TakeDamage(amt: int): void
-    + symbol(): char
-}
-
-' === ИНВЕНТАРЬ ===
-class Item {
-    - id_: string
-    - name_: string
-    + Use(target: Player&): void
-}
-
-class Inventory {
-    - items_: vector<unique_ptr<Item>>
-    + AddItem(item: unique_ptr<Item>): bool
-    + items(): const vector<unique_ptr<Item>>&
-}
-
-' === СИСТЕМЫ ===
-class Game implements IGameContext {
-    - current_state_: unique_ptr<IGameState>
-    - player_: unique_ptr<Player>
-    - resources_: ResourceSystem
-    - renderer_: RenderSystem
-    + Run(): void
-}
-
-class ResourceSystem {
-    + CreateEnemy(id: string): unique_ptr<Enemy>
-    + CreateItem(id: string): unique_ptr<Item>
-}
-
-' === СОСТОЯНИЯ (IoC) ===
 abstract class BaseState implements IGameState {
-    # context_: IGameContext*
-    + SetContext(game: IGameContext*): void
-}
-
-class InventoryState extends BaseState {
-    - selected_slot_: int
-    + Draw(renderer: RenderSystem&): void
+    # game_: Game*
+    + setContext(game: Game*) : void
 }
 
 class ExplorationState extends BaseState {
-    + Draw(renderer: RenderSystem&): void
+    - current_location_id_: int
+    - dialog_message_: string
+    - need_redraw_: bool
+    - show_inventory_: bool
+    + handleInput(cmd: InputCommand, data: DataStore&) : void
+    + update(delta: float, data: DataStore&) : void
+    + draw(renderer: RenderSystem, data: DataStore&) : void
 }
 
-' === СВЯЗИ ===
-Game *-- IGameState
-Game *-- Player
-Game *-- ResourceSystem
+class CombatState extends BaseState {
+    - enemy_indices_: vector<int>
+    - is_boss_fight_: bool
+    - combat_log_: string
+    - last_script_used_id_: int
+    + handleInput(cmd: InputCommand, data: DataStore&) : void
+    + update(delta: float, data: DataStore&) : void
+    + draw(renderer: RenderSystem, data: DataStore&) : void
+}
 
-Player *-- Inventory
-Inventory *-- Item
+class DialogState extends BaseState {
+    - dialogue_lines_: vector<string>
+    - current_line_: int
+    + handleInput(cmd: InputCommand, data: DataStore&) : void
+    + update(delta: float, data: DataStore&) : void
+    + draw(renderer: RenderSystem, data: DataStore&) : void
+}
 
-' InventoryState теперь берет инвентарь через контекст
-InventoryState ..> Inventory : "<<uses>>"
-' Ресурсная система поставляет объекты
-ResourceSystem ..> Item : "<<create>>"
-ResourceSystem ..> Enemy : "<<create>>"
+class PuzzleState extends BaseState {
+    - puzzle_id_: int
+    - input_buffer_: string
+    + handleInput(cmd: InputCommand, data: DataStore&) : void
+    + update(delta: float, data: DataStore&) : void
+    + draw(renderer: RenderSystem, data: DataStore&) : void
+}
+
+class GameOverState extends BaseState {
+    + handleInput(cmd: InputCommand, data: DataStore&) : void
+    + update(delta: float, data: DataStore&) : void
+    + draw(renderer: RenderSystem, data: DataStore&) : void
+}
+
+class FinalState extends BaseState {
+    - waiting_for_choice_: bool
+    + handleInput(cmd: InputCommand, data: DataStore&) : void
+    + update(delta: float, data: DataStore&) : void
+    + draw(renderer: RenderSystem, data: DataStore&) : void
+}
+
+' ======================== Main Game Class ========================
+class Game {
+    - data_: DataStore
+    - current_state_: unique_ptr<IGameState>
+    - running_: bool
+    + run() : void
+    + changeState(new_state: unique_ptr<IGameState>) : void
+    + getDataStore() : DataStore&
+    + quit() : void
+}
+
+' ======================== Relationships ========================
+Game *-- DataStore : contains
+Game *-- IGameState : owns
+Game --> InputSystem : uses
+Game --> RenderSystem : uses
+
+BaseState ..> Game : <<friend>>
+ExplorationState ..> ExplorationSystem : uses
+ExplorationState ..> RenderSystem : uses (drawInventory)
+CombatState ..> CombatSystem : uses
+DialogState ..> DialogSystem : uses
+PuzzleState ..> PuzzleSystem : uses
+
+DataStore --> EntityData : manages
+DataStore --> PlayerData : contains
+DataStore --> EnemyTemplate : loads
+DataStore --> ScriptData : loads
+DataStore --> DialogueLine : loads
+DataStore --> LocationData : loads
+DataStore --> MapObjectData : loads
+DataStore --> PuzzleData : loads
 
 @enduml

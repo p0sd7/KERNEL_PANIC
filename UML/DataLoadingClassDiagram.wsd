@@ -1,0 +1,38 @@
+@startuml DataClassDiagram
+title Class Diagram — DataStore и CsvLoader
+
+class DataStore {
+    - vector<EntityData> entities_
+    - PlayerData player_
+    - map<int, EnemyTemplate> enemy_templates_
+    - map<int, ScriptData> scripts_
+    - map<int, DialogueLine> dialogues_
+    - map<int, LocationData> locations_
+    - map<int, vector<MapObjectData>> map_objects_
+    - map<int, PuzzleData> puzzles_
+    - map<string, int> location_name_to_id_
+    - map<string, int> script_name_to_id_
+    + loadAll(path: string) : void
+    + createEntity(...) : int
+    + getScriptByName(input: string) : ScriptData*
+    + getDialoguesForNPC(...) : vector<DialogueLine>
+    + addScriptToInventory(script_id: int) : void
+    + hasScriptInInventory(script_id: int) : bool
+    + getInventoryScripts() : const vector<int>&
+    + resetPlayerForNewCycle() : void
+}
+
+class CsvLoader {
+    + {static} loadLocations(path: string, out_locations) : void
+    + {static} loadMapObjects(path: string, out_map_objects) : void
+    + {static} loadDialogues(path: string, out_dialogues) : void
+    + {static} loadPuzzles(path: string, out_puzzles) : void
+    + {static} loadEnemies(path: string, out_enemies) : void
+    + {static} loadScripts(...) : void
+    + {static} parseLine(line: string, delimiter: char) : vector<string>
+}
+
+DataStore --> CsvLoader : uses
+DataStore --> EntityData : manages
+DataStore --> PlayerData : contains
+@enduml

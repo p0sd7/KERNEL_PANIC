@@ -1,0 +1,45 @@
+@startuml Rendering Component Diagram
+title Component Diagram — Рендеринг и ввод (macOS)
+
+skinparam componentStyle uml2
+
+package "Game Engine" {
+    [Game] as Game
+    [State Machine] as FSM
+    [DataStore] as Data
+}
+
+package "Systems" {
+    [RenderSystem] as RS <<system>>
+    [InputSystem] as IS <<system>>
+}
+
+package "External Libraries" {
+    [ncurses] as NC
+}
+
+node "Terminal" as Terminal
+
+Game --> RS : uses
+Game --> IS : uses
+Game --> FSM : owns
+FSM --> RS : draw calls
+IS ..> NC : getch()
+RS ..> NC : initscr, clear, mvaddch, refresh
+
+RS --> Data : reads
+IS --> Game : InputCommand
+
+NC --> Terminal : input/output
+
+note top of RS
+  Статические функции,
+  вся отрисовка через ncurses
+end note
+
+note top of IS
+  Преобразование getch()
+  в InputCommand
+end note
+
+@enduml

@@ -1,0 +1,30 @@
+@startuml Dialogue Sequence Diagram
+title Sequence Diagram — Диалог с NPC (DialogState)
+
+participant "ExplorationState" as Exp
+participant "Game" as Game
+participant "DialogState" as Dlg
+participant "DialogSystem" as DlgSys
+participant "DataStore" as Data
+participant "RenderSystem" as Render
+
+Exp -> Game: changeState(DialogState, npc_entity_idx)
+Game -> Dlg: new DialogState
+Dlg -> DlgSys: startDialog(data, npc_idx, out_lines)
+activate DlgSys
+DlgSys -> Data: get player memory, collected_fragments
+DlgSys -> Data: get dialogues for npc_id
+DlgSys -> DlgSys: filter by memory & fragments
+DlgSys --> Dlg: out_lines
+deactivate DlgSys
+Dlg -> Dlg: dialogue_lines_ = out_lines, current_line_ = 0
+Dlg -> Render: drawDialog(lines)
+Dlg -> Game: wait for input
+Game -> Dlg: handleInput(CONFIRM)
+Dlg -> Dlg: current_line_++
+alt more lines
+    Dlg -> Render: drawDialog(next line)
+else no more lines
+    Dlg -> Game: changeState(ExplorationState)
+end
+@enduml

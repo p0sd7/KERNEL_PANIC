@@ -1,0 +1,22 @@
+@startuml Memory State
+title State Machine — Память и финал
+
+[*] --> memory_0_percent : начало игры
+
+memory_0_percent --> memory_30_percent : победить watcher.eze
+memory_30_percent --> memory_60_percent : победить rack.eze
+memory_60_percent --> memory_70_percent : поговорить с healer.dll
+memory_70_percent --> memory_95_percent : победить liar.eze
+
+memory_95_percent --> FinalState : вход в /
+
+state FinalState {
+    [*] --> ShowMirror
+    ShowMirror --> Choice : показать текст
+    Choice --> Quit : НЕТ
+    Choice --> Reset : ДА
+    Reset --> [*] : сброс PlayerData, переход в /ash
+}
+
+Quit --> [*] : завершение игры
+@enduml

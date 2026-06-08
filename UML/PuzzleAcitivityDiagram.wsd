@@ -1,0 +1,26 @@
+@startuml Puzzle Activity Diagram
+title Activity Diagram — Головоломка /xshaw (button_order)
+
+start
+:Игрок входит в /xshaw;
+:ExplorationState переключает в PuzzleState;
+:Отобразить пульт с 5 кнопками и подсказкой;
+repeat
+    :Ожидание ввода цифры (1-5);
+    :input_buffer_ += цифра;
+    if (длина input_buffer_ == 5?) then (да)
+        :PuzzleSystem::trySolve(puzzle_id, input_buffer_);
+        if (совпадает с solution_data?) then (да)
+            :Активировать exit в локации;
+            :Выдать награду (reward_item_id);
+            :Вернуться в ExplorationState;
+            stop
+        else (нет)
+            :PuzzleSystem::applyPenalty("spawn_enemies");
+            :CombatSystem::startCombat(временные враги);
+            :После боя вернуться в PuzzleState;
+            :input_buffer_.clear();
+        endif
+    endif
+repeat while (exit не активирован?) is (да)
+@enduml

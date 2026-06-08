@@ -1,0 +1,69 @@
+@startuml Combat Diagram
+title Sequence Diagram — Один ход боя (CombatState)
+
+participant "CombatState" as State
+participant "InputSystem" as Input
+participant "CombatSystem" as Combat
+participant "DataStore" as Data
+participant "RenderSystem" as Render
+
+State -> Input: pollEvents()
+Input --> State: TEXT_INPUT (script_name)
+
+State -> Data: getScriptByName(script_name)
+Data --> State: script_id or null
+
+alt script not found
+    State -> State: combat_log_ += "Ничего не произошло"
+else script found
+    State -> Data: hasScriptInInventory(script_id)
+    Data --> State: true/false
+    alt not in inventory
+        State -> State: combat_log_ += "Нет такого скрипта"
+    else in inventory
+        State -> Combat: applyScript(data, player_idx, script_id, enemy_indices, log)
+        activate Combat
+        Combat -> Data: getScriptData(script_id)
+        Combat -> Data: modify player hp (self_damage)
+        Combat -> Data: modify enemy hp (damage)
+        Combat -> Data: set player defense percent
+        Combat -> Data: set enemy stunned flag
+        Combat --> State: log (результаты применения)
+        deactivate Combat
+        State -> State: combat_log_ += log
+        State -> Data: remove dead enemies
+    end
+end
+
+State -> Combat: enemyTurn(data, player_idx, enemy_indices, log)
+activate Combat
+loop each alive enemy
+    Combat -> Data: get enemy damage, special_ai
+    alt special_ai == PRETEND_HARMLESS and last player script was defense
+        Combat -> Combat: skip attack
+    else
+        Combat -> Data: modify player hp (with defense)
+    end
+    Combat -> Combat: handle other special_ai (block script, copy)
+end
+Combat --> State: log (атаки врагов)
+deactivate Combat
+
+State -> State: combat_log_ += log
+
+State -> Combat: isCombatOver(enemy_indices, data)
+Combat --> State: true/false
+
+alt combat over
+    alt all enemies dead
+        State -> Combat: healAfterCombat(...)
+        State -> State: add rewards (scripts, memory)
+        State -> Game: changeState(ExplorationState)
+    else player dead
+        State -> Game: changeState(GameOverState)
+    end
+else combat continues
+    State -> Render: drawCombat(...) (с обновлённым логом)
+end
+
+@enduml

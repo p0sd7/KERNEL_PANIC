@@ -1,0 +1,24 @@
+@startuml StateDiagram
+title State Machine Diagram — KERNEL_PANIC (переходы между состояниями)
+
+[*] --> ExplorationState : игра запущена
+
+ExplorationState --> CombatState : столкновение с врагом / forced_combat_on_enter
+ExplorationState --> DialogState : взаимодействие с NPC ($)
+ExplorationState --> PuzzleState : вход в зону головоломки (дверь /tmp, пульт /xshaw)
+ExplorationState --> FinalState : вход в локацию "/"
+
+CombatState --> ExplorationState : победа
+CombatState --> GameOverState : поражение (HP = 0)
+
+DialogState --> ExplorationState : любая клавиша (диалог завершён)
+
+PuzzleState --> ExplorationState : успешное решение
+PuzzleState --> CombatState : ошибка (в /xshaw) → spawn enemies
+
+GameOverState --> [*] : завершение игры (Game::Quit)
+
+FinalState --> [*] : выбор НЕТ
+FinalState --> ExplorationState : выбор ДА (сброс данных, локация /ash)
+
+@enduml

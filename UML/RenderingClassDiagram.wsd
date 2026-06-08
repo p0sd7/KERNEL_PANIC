@@ -1,0 +1,53 @@
+@startuml ClassDiagram
+title Class Diagram — RenderSystem и InputSystem (macOS, ncurses)
+
+class RenderSystem <<system>> {
+    + {static} init() : void
+    + {static} shutdown() : void
+    + {static} clear() : void
+    + {static} drawExploration(data: DataStore&, player_idx: int, w: int, h: int) : void
+    + {static} drawCombat(data: DataStore&, player_idx: int, enemy_indices: vector<int>&, log: string) : void
+    + {static} drawDialog(lines: vector<string>) : void
+    + {static} drawInventory(data: DataStore&, player_idx: int) : void
+    + {static} drawGameOver() : void
+    + {static} drawFinal(prompt: string) : void
+    + {static} present() : void
+}
+
+class InputSystem <<system>> {
+    + {static} pollEvents() : InputCommand
+}
+
+class DataStore {
+    + getEntity(index: int) : EntityData&
+    + getInventoryScripts() : const vector<int>&
+    + getScriptById(id: int) : ScriptData*
+}
+
+class InputCommand {
+    + type: InputType
+    + dx: int
+    + dy: int
+    + text: string
+}
+
+enum InputType {
+    MOVE
+    TEXT_INPUT
+    CONFIRM
+    QUIT
+    INVENTORY_TOGGLE
+}
+
+RenderSystem ..> DataStore : reads
+InputSystem --> InputCommand : returns
+Game --> RenderSystem : uses
+Game --> InputSystem : uses
+
+note bottom of RenderSystem
+  Использует ncurses: initscr(),
+  clear(), mvaddch(), refresh(),
+  getch(), napms() и т.д.
+end note
+
+@enduml

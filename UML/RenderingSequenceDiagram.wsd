@@ -1,0 +1,77 @@
+@startuml Rendering Sequence Diagram
+title Sequence Diagram — Одна итерация рендеринга и ввода (macOS)
+
+participant "Game" as Game
+participant "InputSystem" as Input
+participant "current_state : IGameState" as State
+participant "RenderSystem" as Render
+participant "ncurses" as Ncurses
+
+Game -> Input: pollEvents()
+activate Input
+Input -> Ncurses: getch()
+Ncurses --> Input: key
+Input -> Input: преобразование в InputCommand
+Input --> Game: cmd
+deactivate Input
+
+Game -> State: handleInput(cmd, data)
+activate State
+State --> Game
+deactivate State
+
+Game -> State: update(delta, data)
+activate State
+State --> Game
+deactivate State
+
+Game -> Render: clear()
+activate Render
+Render -> Ncurses: clear()
+deactivate Render
+
+Game -> State: draw(renderer, data)
+activate State
+
+alt state == ExplorationState
+    State -> Render: drawExploration(data, player_idx, w, h)
+    activate Render
+    Render -> Ncurses: mvaddch(), printw()
+    deactivate Render
+    State -> Render: drawInventory(...) if needed
+    activate Render
+    Render -> Ncurses: mvaddch(), printw()
+    deactivate Render
+else state == CombatState
+    State -> Render: drawCombat(data, player_idx, enemy_indices, log)
+    activate Render
+    Render -> Ncurses: mvaddch(), printw()
+    deactivate Render
+else state == DialogState
+    State -> Render: drawDialog(lines)
+    activate Render
+    Render -> Ncurses: border(), printw()
+    deactivate Render
+else state == GameOverState
+    State -> Render: drawGameOver()
+    activate Render
+    Render -> Ncurses: attron(COLOR_PAIR), printw()
+    deactivate Render
+else state == FinalState
+    State -> Render: drawFinal(prompt)
+    activate Render
+    Render -> Ncurses: printw()
+    deactivate Render
+end
+
+State --> Game
+deactivate State
+
+Game -> Render: present()
+activate Render
+Render -> Ncurses: refresh()
+deactivate Render
+
+Game -> Game: napms(16)
+
+@enduml

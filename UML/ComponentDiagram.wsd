@@ -1,35 +1,91 @@
-@startuml ComponentDiagram  
-title Архитектура подсистем KERNEL_PANIC (UML Component Diagram)
+@startuml ComponentDiagram
+title Component Diagram — KERNEL_PANIC (Data-Oriented Design)
 
 skinparam componentStyle uml2
 
 package "Game Engine" {
-    
-    [Game] <<component>> as game
-    [LogicSystem] <<component>> as logic
-    [CombatSystem] <<component>> as combat
-    [InputSystem] <<component>> as input
-    [RenderSystem] <<component>> as render
-    [ResourceSystem] <<component>> as resource
-    
-    database "Game Data (CSV/JSON)" as csv
-    
-    ' Описание связей (Dependency)
-    game ..> input : <<use>>
-    game ..> logic : <<update>>
-    game ..> render : <<call>>
-    
-    logic ..> combat : <<trigger>>
-    logic ..> resource : <<request>>
-    
-    combat ..> resource : <<request>>
-    
-    resource ..> csv : <<access/parse>>
+    [Game] <<main>> as Game
+    [DataStore] <<data container>> as DataStore
+    [State Machine] <<control>> as StateMachine
+    [CSV Loader] <<utility>> as CsvLoader
 }
 
-note right of game
-  Точка входа. 
+package "Systems" {
+    [ExplorationSystem] <<system>> as ExpSys
+    [CombatSystem] <<system>> as CombatSys
+    [DialogSystem] <<system>> as DialogSys
+    [PuzzleSystem] <<system>> as PuzzleSys
+    [RenderSystem] <<system>> as RenderSys
+    [InputSystem] <<system>> as InputSys
+}
+
+package "States" {
+    [ExplorationState] <<state>> as ExpState
+    [CombatState] <<state>> as CombatState
+    [DialogState] <<state>> as DialogState
+    [PuzzleState] <<state>> as PuzzleState
+    [GameOverState] <<state>> as GameOverState
+    [FinalState] <<state>> as FinalState
+}
+
+database "CSV Files\n(assets/)" as CSVFolder {
+    file "locations.csv"
+    file "map_objects.csv"
+    file "npcs.csv"
+    file "dialogues.csv"
+    file "items.csv"
+    file "scripts.csv"
+    file "enemies.csv"
+    file "enemy_groups.csv"
+    file "memory_fragments.csv"
+    file "puzzles.csv"
+}
+
+' === Connections ===
+Game --> StateMachine : <<owns>>
+Game --> DataStore : <<contains>>
+Game --> InputSys : <<uses>>
+Game --> RenderSys : <<uses>>
+
+StateMachine --> ExpState : <<instantiates>>
+StateMachine --> CombatState : <<instantiates>>
+StateMachine --> DialogState : <<instantiates>>
+StateMachine --> PuzzleState : <<instantiates>>
+StateMachine --> GameOverState : <<instantiates>>
+StateMachine --> FinalState : <<instantiates>>
+
+ExpState --> ExpSys : <<calls>>
+ExpState --> RenderSys : <<calls>> (drawInventory)
+CombatState --> CombatSys : <<calls>>
+DialogState --> DialogSys : <<calls>>
+PuzzleState --> PuzzleSys : <<calls>>
+
+ExpSys --> DataStore : <<read/write>>
+CombatSys --> DataStore : <<read/write>>
+DialogSys --> DataStore : <<read>>
+PuzzleSys --> DataStore : <<read/write>>
+RenderSys --> DataStore : <<read>>
+InputSys --> Game : <<events>>
+
+CsvLoader --> CSVFolder : <<loads>>
+CsvLoader --> DataStore : <<populates>>
+
+note right of Game
+  Точка входа.
   Управляет главным циклом Run()
+end note
+
+note bottom of DataStore
+  Плоские массивы:
+  - vector<EntityData>
+  - PlayerData
+  - map-шаблоны из CSV
+end note
+
+note left of RenderSys
+  Отображает инвентарь
+  во всех состояниях,
+  кроме CombatState
 end note
 
 @enduml

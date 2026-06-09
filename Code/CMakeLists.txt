@@ -24,8 +24,9 @@ set(SOURCES
     src/LogicSystem/puzzle_state.cpp
     src/RenderSystem/ascii_art.cpp
     src/RenderSystem/console_renderer.cpp
-    src/ResourceSystem/csv_data_manager.cpp
-    src/ResourceSystem/csv_loader.cpp
+    src/DataStore/data_store.cpp
+    src/DataStore/csv_loader.cpp
+    src/Logging/logger.cpp
 )
 
 add_executable(kernel_panic ${SOURCES})

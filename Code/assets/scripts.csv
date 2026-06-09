@@ -1,1 +1,8 @@
 id;name_for_input;damage;self_damage;defense_percent;stun_target;available_after_boss
+1;disintegrate,vh;15;0;0;0;
+2;manage_control,vh;0;0;10;0;
+3;shatter,vh;25;0;0;0;watcher.eze
+4;burn,vh;30;10;0;0;rack.eze
+5;blind,vh;0;0;0;1;
+6;not_malware,vh;0;0;40;0;healer.dll
+7;erase,vh;999;0;0;0;liar.eze

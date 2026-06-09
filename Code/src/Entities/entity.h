@@ -1,7 +1,6 @@
 #pragma once
 
-#include <string>
-#include <unordered_map>
+#include <array>
 
 #include "renderable.h"
 
@@ -26,7 +25,7 @@ enum class StatType {
   kNpcId,
   kEnemyId,
   kTrapDamage,
-  kCount  // Must be last
+  kCount  // Must be last.
 };
 
 class Entity : public Renderable {
@@ -40,8 +39,9 @@ class Entity : public Renderable {
     x_ = x;
     y_ = y;
   }
-  int GetStat(const std::string& key, int default_value = 0) const;
-  void SetStat(const std::string& key, int value);
+
+  int GetStat(StatType type) const;
+  void SetStat(StatType type, int value);
 
   EntityType GetType() const { return type_; }
   int GetId() const { return id_; }
@@ -52,7 +52,7 @@ class Entity : public Renderable {
   int x_;
   int y_;
   char symbol_;
-  std::unordered_map<std::string, int> stats_;
+  std::array<int, static_cast<size_t>(StatType::kCount)> stats_ = {};
 };
 
-} 
+}  // namespace kernel

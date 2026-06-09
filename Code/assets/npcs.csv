@@ -1,1 +1,5 @@
 id;default_dialogue_id
+corrupted_log;1
+stray_process;2
+guide.old;3
+healer.dll;4

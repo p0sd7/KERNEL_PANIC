@@ -1,1 +1,17 @@
 id;name;type;effect_value;script_id
+scrap_of_memory;scrap_of_memory;script;0;1
+manage_control_item;manage_control;script;0;2
+small_health;small_health.tmp;heal;10;
+fragment_health.chn;fragment_health.chn;heal;15;
+reward_health.xsw;reward_health.xsw;heal;20;
+stable_fragment.aby;stable_fragment.aby;heal;10;
+clean_echo.aby;clean_echo.aby;heal;20;
+forgotten_health.rot;forgotten_health.rot;heal;25;
+fragment_log_1;fragment_log_1;puzzle_item;0;
+fragment_log_2;fragment_log_2;puzzle_item;0;
+fragment_log_3;fragment_log_3;puzzle_item;0;
+memory_frag_1;memory_frag_1;memory_frag;0;
+memory_frag_2;memory_frag_2;memory_frag;0;
+memory_frag_3;memory_frag_3;memory_frag;0;
+memory_frag_4;memory_frag_4;memory_frag;0;
+memory_frag_5;memory_frag_5;memory_frag;0;

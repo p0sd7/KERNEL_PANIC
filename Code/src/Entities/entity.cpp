@@ -13,4 +13,4 @@ void Entity::SetStat(StatType type, int value) {
   stats_[static_cast<size_t>(type)] = value;
 }
 
-}
+}  // namespace kernel

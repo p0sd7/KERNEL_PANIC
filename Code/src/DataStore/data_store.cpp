@@ -247,4 +247,16 @@ int DataStore::GetLocationIdByName(std::string loc_name = "") const {
   return loc_id;
 }
 
+std::pair<int, int> DataStore::GetSpawnPoint(int loc_id) const {
+  auto it = map_objects_.find(loc_id);
+  if (it != map_objects_.end()) {
+    for (const auto& obj : it->second) {
+      if (obj.type == "player") {
+        return {obj.x, obj.y};
+      }
+    }
+  }
+  return {10, 10};
+}
+
 }  // namespace kernel

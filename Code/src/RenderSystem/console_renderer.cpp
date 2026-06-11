@@ -161,17 +161,13 @@ void DrawDialog(const std::string& target_name,
                 const std::vector<std::string>& lines) {
   if (kDialogHeight < 3) return;
 
-  // Рисуем рамку из '=' (первая строка)
   for (int i = 0; i < kScreenWidth; ++i) {
     mvaddch(kDialogY, i, '=');
   }
-  // Вторая строка: имя цели
   mvprintw(kDialogY + 1, 2, "%s", target_name.c_str());
-  // Третья строка: снова '='
   for (int i = 0; i < kScreenWidth; ++i) {
     mvaddch(kDialogY + 2, i, '=');
   }
-  // Далее текст (с отступом)
   int line_y = kDialogY + 3;
   for (const auto& line : lines) {
     if (line_y >= kScreenHeight) break;
@@ -181,7 +177,6 @@ void DrawDialog(const std::string& target_name,
 
 void DrawGameOver() {
   clear();
-  // Синий фон (если поддерживается, иначе просто текст)
   attron(COLOR_PAIR(1) | A_BOLD);
   mvprintw(kScreenHeight / 2, kScreenWidth / 2 - 20,
            "KERNEL_PANIC: fatal error. Reason: you.");

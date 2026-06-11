@@ -1,8 +1,8 @@
 id;location_id;type;symbol;x;y;ref_id;special_condition
 1;1;player;@;10;10;;
-2;1;npc;$;5;5;101;
-3;1;item;?;6;6;1;
-4;1;exit;e;7;7;;
+2;1;npc;$;1;1;101;
+3;1;item;?;18;13;1;
+4;1;exit;e;37;7;;
 5;2;npc;$;15;10;102;
 6;2;item;?;3;5;9;
 7;2;item;?;8;12;10;

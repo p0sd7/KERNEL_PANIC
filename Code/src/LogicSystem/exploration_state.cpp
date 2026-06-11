@@ -90,7 +90,9 @@ void ExplorationState::HandleInput(const InputCommand& cmd, DataStore& data) {
       }
       return;
     }
-    player->SetPosition(new_x, new_y);
+    if (new_x < 39 && new_x > 0 && new_y < 14 && new_y > 0) {
+      player->SetPosition(new_x, new_y);
+    }
   } else if (cmd.type == InputType::kQuit) {
     if (game_) game_->Quit();
   }

@@ -165,6 +165,7 @@ class DataStore {
   const InterfaceConfig& GetInterfaceConfig() const {
     return interface_config_;
   }
+  std::pair<int, int> GetSpawnPoint(int loc_id) const;
 
  private:
   std::vector<std::unique_ptr<Entity>> entities_;

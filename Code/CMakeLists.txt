@@ -19,7 +19,6 @@ set(SOURCES
     src/LogicSystem/game.cpp
     src/LogicSystem/gameover_state.cpp
     src/LogicSystem/puzzle_state.cpp
-    src/RenderSystem/ascii_art.cpp
     src/RenderSystem/console_renderer.cpp
     src/DataStore/data_store.cpp
     src/DataStore/csv_loader.cpp

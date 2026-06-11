@@ -19,10 +19,8 @@ struct InterfaceConfig {
   int inventory_y = 2;
   int inventory_x = 44;
   int inventory_width = 20;
-
   int dialog_y = 18;
   int dialog_height = 5;
-
   int bar_width = 30;
 };
 
@@ -30,7 +28,6 @@ struct LocationData {
   int id = -1;
   std::string name;
   std::string ascii_background;
-  char exit_symbol = 0;
   bool forced_combat_on_enter = false;
   int next_location_id = -1;
 };
@@ -60,7 +57,7 @@ struct EnemyTemplate {
 
 struct DialogueLine {
   int id = -1;
-  std::string npc_id;
+  int npc_id;
   int condition_memory_min = 0;
   int condition_memory_max = 100;
   int condition_fragments = -1;
@@ -130,15 +127,15 @@ class DataStore {
   }
 
   const LocationData* GetLocationById(int id) const;
+  int GetLocationIdByName(const std::string& loc_name) const;
   const std::vector<MapObjectData>& GetMapObjects(int location_id) const;
   const EnemyTemplate* GetEnemyTemplate(int id) const;
   const ScriptData* GetScriptById(int id) const;
-  std::vector<DialogueLine> GetDialoguesForNpc(const std::string& npc_id,
-                                               int memory, int fragments) const;
-  int GetNpcDefaultDialogue(int id) const;
+  std::vector<DialogueLine> GetDialoguesForNpc(int npc_id, int memory,
+                                               int fragments) const;
   const ItemData* GetItemById(int id) const;
   const std::vector<int>& GetEnemyGroup(int location_id) const;
-  const std::map<int, MemoryFragmentData>& GetMemoryFragments();
+  const std::map<int, MemoryFragmentData>& GetMemoryFragments() const;
   const PuzzleData* GetPuzzleByLocation(int location_id) const;
   const BackgroundData& GetBackground(int location_id) const;
 
@@ -159,13 +156,12 @@ class DataStore {
   void IncrementFragments();
   int GetFragments() const { return fragments_collected_; }
   void ResetPlayerForNewCycle();
-  const std::string& GetNpcName(int npc_id) const;
-  int GetLocationIdByName(std::string loc_name) const;
 
+  const std::string& GetNpcName(int npc_id) const;
+  std::pair<int, int> GetSpawnPoint(int loc_id) const;
   const InterfaceConfig& GetInterfaceConfig() const {
     return interface_config_;
   }
-  std::pair<int, int> GetSpawnPoint(int loc_id) const;
 
  private:
   std::vector<std::unique_ptr<Entity>> entities_;
@@ -192,7 +188,3 @@ class DataStore {
 };
 
 }  // namespace kernel
-
-// делаем ограничение чтобы игрок не выходил за карту, расставляем объекты по
-// карте, описываем взаимодействие с объектами в exploration_state, делаем
-// combat_state, dialogue_state, puzzle_state

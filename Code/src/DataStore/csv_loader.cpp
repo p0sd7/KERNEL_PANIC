@@ -84,7 +84,7 @@ static int SafeStoi(const std::string& s, int default_value,
 bool LoadInterfaceConfig(const std::string& path, InterfaceConfig& out_config) {
   std::ifstream file(path);
   if (!file.is_open()) {
-    logging::LogError("LoadConfig: cannot open file " + path);
+    logging::LogError("LoadInterfaceConfig: cannot open file " + path);
     return false;
   }
 
@@ -95,7 +95,8 @@ bool LoadInterfaceConfig(const std::string& path, InterfaceConfig& out_config) {
 
   if (col.find(csv_column::kInterfaceCfgKey) == col.end() ||
       col.find(csv_column::kInterfaceCfgValue) == col.end()) {
-    logging::LogError("LoadConfig: missing required columns in " + path);
+    logging::LogError("LoadInterfaceConfig: missing required columns in " +
+                      path);
     return false;
   }
 
@@ -129,7 +130,7 @@ bool LoadInterfaceConfig(const std::string& path, InterfaceConfig& out_config) {
   out_config.bar_width = get_int("bar_width", 30);
   out_config.dialog_height = get_int("dialog_height", 5);
 
-  logging::LogInfo("Loaded config from " + path);
+  logging::LogInfo("Loaded interface config from " + path);
   return true;
 }
 
@@ -179,7 +180,6 @@ bool LoadLocations(const std::string& path,
             ? -1
             : SafeStoi(next_id, -1,
                        path + " next_id line " + std::to_string(line_num));
-
     out_locations[loc.id] = loc;
   }
   logging::LogInfo("Loaded " + std::to_string(out_locations.size()) +
@@ -237,16 +237,15 @@ bool LoadMapObjects(
     obj.ref_id = SafeStoi(cols[col[csv_column::kObjRefId]], -1,
                           path + " ref_id line " + std::to_string(line_num));
     obj.special_condition = (cols.size() > 7) ? cols[7] : "";
-
     out_map_objects[obj.location_id].push_back(obj);
   }
-  logging::LogInfo("Loaded " + std::to_string(out_map_objects.size()) +
-                   " map objects for locations from " + path);
+  logging::LogInfo("Loaded map objects for " +
+                   std::to_string(out_map_objects.size()) + " locations from " +
+                   path);
   return true;
 }
 
-bool LoadNpcs(const std::string& path,
-              std::map<int, NpcData>& out_npc_default_dialogue) {
+bool LoadNpcs(const std::string& path, std::map<int, NpcData>& out_npcs) {
   std::ifstream file(path);
   if (!file.is_open()) {
     logging::LogError("LoadNpcs: cannot open file " + path);
@@ -258,9 +257,8 @@ bool LoadNpcs(const std::string& path,
   auto headers = ParseLine(header_line, ';');
   auto col = BuildColumnMap(headers);
 
-  std::vector<const char*> required = {csv_column::kNpcId,
-                                       csv_column::kNpcDefaultDialogue,
-                                       csv_column::kNpcName};
+  std::vector<const char*> required = {csv_column::kNpcId, csv_column::kNpcName,
+                                       csv_column::kNpcDefaultDialogue};
   if (!CheckRequiredColumns(col, required, path)) return false;
 
   std::string line;
@@ -277,10 +275,10 @@ bool LoadNpcs(const std::string& path,
     npc.default_dialog_id =
         SafeStoi(cols[col[csv_column::kNpcDefaultDialogue]], -1,
                  path + " line " + std::to_string(line_num));
-    out_npc_default_dialogue[npc.id] = npc;
+    out_npcs[npc.id] = npc;
   }
-  logging::LogInfo("Loaded " + std::to_string(out_npc_default_dialogue.size()) +
-                   " NPCs from " + path);
+  logging::LogInfo("Loaded " + std::to_string(out_npcs.size()) + " NPCs from " +
+                   path);
   return true;
 }
 
@@ -316,7 +314,8 @@ bool LoadDialogues(const std::string& path,
     DialogueLine dlg;
     dlg.id = SafeStoi(cols[col[csv_column::kDlgId]], -1,
                       path + " id line " + std::to_string(line_num));
-    dlg.npc_id = cols[col[csv_column::kDlgNpcId]];
+    dlg.npc_id = SafeStoi(cols[col[csv_column::kDlgNpcId]], -1,
+                          path + " npc_id line " + std::to_string(line_num));
     dlg.condition_memory_min =
         SafeStoi(cols[col[csv_column::kDlgCondMemoryMin]], 0,
                  path + " min line " + std::to_string(line_num));
@@ -330,7 +329,6 @@ bool LoadDialogues(const std::string& path,
             : SafeStoi(frag, -1,
                        path + " frag line " + std::to_string(line_num));
     dlg.text = cols[col[csv_column::kDlgText]];
-
     out_dialogues[dlg.id] = dlg;
   }
   logging::LogInfo("Loaded " + std::to_string(out_dialogues.size()) +
@@ -387,16 +385,18 @@ bool LoadItems(const std::string& path, std::map<int, ItemData>& out_items) {
     else
       item.type = ItemType::kUnknown;
 
+    std::string effect_str = cols[col[csv_column::kItemEffectValue]];
     item.effect_value =
-        SafeStoi(cols[col[csv_column::kItemEffectValue]], 0,
-                 path + " effect line " + std::to_string(line_num));
+        effect_str.empty()
+            ? 0
+            : SafeStoi(effect_str, 0,
+                       path + " effect line " + std::to_string(line_num));
     std::string script_id_str = cols[col[csv_column::kItemScriptId]];
     item.script_id =
         script_id_str.empty()
             ? -1
             : SafeStoi(script_id_str, -1,
                        path + " script_id line " + std::to_string(line_num));
-
     out_items[item.id] = item;
   }
   logging::LogInfo("Loaded " + std::to_string(out_items.size()) +
@@ -450,7 +450,6 @@ bool LoadScripts(const std::string& path,
                  path + " defense line " + std::to_string(line_num));
     scr.stun_target = (cols[col[csv_column::kScriptStunTarget]] == "1");
     scr.available_after_boss = cols[col[csv_column::kScriptAvailableAfterBoss]];
-
     out_scripts[scr.id] = scr;
   }
   logging::LogInfo("Loaded " + std::to_string(out_scripts.size()) +
@@ -501,7 +500,6 @@ bool LoadEnemies(const std::string& path,
         (type_str == "boss") ? EnemyType::kBoss : EnemyType::kRandom;
     enemy.special_ai = cols[col[csv_column::kEnemySpecialAi]];
     enemy.dialogue_on_spawn = cols[col[csv_column::kEnemyDialogueOnSpawn]];
-
     out_enemies[enemy.id] = enemy;
   }
   logging::LogInfo("Loaded " + std::to_string(out_enemies.size()) +
@@ -538,12 +536,11 @@ bool LoadEnemyGroups(const std::string& path,
                           path + " loc line " + std::to_string(line_num));
     int enemy_id = SafeStoi(cols[col[csv_column::kGroupEnemyId]], -1,
                             path + " enemy line " + std::to_string(line_num));
-    if (loc_id != -1 && enemy_id != -1) {
+    if (loc_id != -1 && enemy_id != -1)
       out_groups[loc_id].push_back(enemy_id);
-    } else {
+    else
       logging::LogWarning("Skipping line " + std::to_string(line_num) + " in " +
                           path + " due to invalid IDs");
-    }
   }
   logging::LogInfo("Loaded enemy groups for " +
                    std::to_string(out_groups.size()) + " locations from " +
@@ -627,7 +624,6 @@ bool LoadPuzzles(const std::string& path,
         SafeStoi(cols[col[csv_column::kPuzzleRewardItemId]], -1,
                  path + " reward line " + std::to_string(line_num));
     puzzle.wrong_penalty = cols[col[csv_column::kPuzzleWrongPenalty]];
-
     out_puzzles[puzzle.id] = puzzle;
   }
   logging::LogInfo("Loaded " + std::to_string(out_puzzles.size()) +

@@ -79,7 +79,7 @@ constexpr const char* kPuzzleSolutionData = "solution_data";
 constexpr const char* kPuzzleRewardItemId = "reward_item_id";
 constexpr const char* kPuzzleWrongPenalty = "wrong_penalty";
 
-// graphic interface_config.csv
+// interface_config.csv
 constexpr const char* kInterfaceCfgKey = "key";
 constexpr const char* kInterfaceCfgValue = "value";
 

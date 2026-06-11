@@ -20,8 +20,7 @@ bool LoadLocations(const std::string& path,
 bool LoadMapObjects(const std::string& path,
                     std::map<int, std::vector<MapObjectData>>& out_map_objects);
 
-bool LoadNpcs(const std::string& path,
-              std::map<int, NpcData>& out_npc_default_dialogue);
+bool LoadNpcs(const std::string& path, std::map<int, NpcData>& out_npcs);
 
 bool LoadDialogues(const std::string& path,
                    std::map<int, DialogueLine>& out_dialogues);

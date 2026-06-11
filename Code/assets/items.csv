@@ -10,8 +10,8 @@ id;name;type;effect_value;script_id
 9;fragment_log_1;puzzle_item;0;
 10;fragment_log_2;puzzle_item;0;
 11;fragment_log_3;puzzle_item;0;
-12;memory_frag_1;memory_frag;0;
-13;memory_frag_2;memory_frag;0;
-14;memory_frag_3;memory_frag;0;
-15;memory_frag_4;memory_frag;0;
-16;memory_frag_5;memory_frag;0;
+12;memory_frag_1;memory_frag;1;
+13;memory_frag_2;memory_frag;2;
+14;memory_frag_3;memory_frag;3;
+15;memory_frag_4;memory_frag;4;
+16;memory_frag_5;memory_frag;5;

@@ -3,6 +3,7 @@
 #include "../DataStore/data_store.h"
 #include "../Logging/logger.h"
 #include "../RenderSystem/console_renderer.h"
+#include "dialogue_state.h"
 #include "game.h"
 
 namespace kernel {
@@ -38,7 +39,7 @@ void ExplorationState::HandleInput(const InputCommand& cmd, DataStore& data) {
         if (!item) {
           logging::LogError("Unknown item id: " +
                             std::to_string(target_obj->ref_id));
-          RenderSystem::SetDialogText("System", {"Unkown item"});
+          RenderSystem::SetDialogueText("System", {"Unknown item"});
           return;
         }
         int current_hp = player->GetStat(StatType::kHp);
@@ -49,48 +50,52 @@ void ExplorationState::HandleInput(const InputCommand& cmd, DataStore& data) {
                             std::min(max_hp, current_hp + item->effect_value));
             break;
           case ItemType::kScript:
-            if (item->script_id != -1) {
+            if (item->script_id != -1)
               data.AddScriptToInventory(item->script_id);
-              const auto* scr = data.GetScriptById(item->script_id);
-              std::string scr_name = scr ? scr->name_for_input : "unknown";
-            }
             break;
           case ItemType::kTrap:
             player->SetStat(StatType::kHp, current_hp - item->effect_value);
+            RenderSystem::SetDialogueText(
+                "Trap", {"You trigger a trap and lose " +
+                         std::to_string(item->effect_value) + " HP."});
             break;
           case ItemType::kPuzzleItem:
             break;
-          case ItemType::kMemoryFrag:
+          case ItemType::kMemoryFrag: {
             data.IncrementFragments();
-            // надо добавить в диалог добавление текста через dialogstate
+            int frag_id = item->effect_value;
+            const auto& fragments = data.GetMemoryFragments();
+            auto it = fragments.find(frag_id);
+            std::string msg = (it != fragments.end())
+                                  ? it->second.text
+                                  : "Unknown memory fragment";
+            RenderSystem::SetDialogueText("memory fragment", {msg});
             break;
+          }
           default:
             return;
         }
         data.RemoveMapObject(loc_id, target_obj->id);
       } else if (target_obj->type == "npc") {
-        RenderSystem::SetDialogText(target_obj->ref_id == -1
-                                        ? "NPC"
-                                        : data.GetNpcName(target_obj->ref_id),
-                                    {"I have nothing to tell"});
-        // надо добавить в диалог добавление текста через dialogstate
+        game_->PushState(
+            std::make_unique<DialogueState>(data, target_obj->ref_id));
       } else if (target_obj->type == "boss") {
-        RenderSystem::SetDialogText("Boss", {"im da boss"});
-        // надо реализовать combat state
+        RenderSystem::SetDialogueText("Boss", {"I'm the boss!"});
       } else if (target_obj->type == "exit") {
         int next_loc_id = loc->next_location_id;
-        const auto* next_loc = data.GetLocationById(next_loc_id);
-        data.SetPlayerLocationId(loc->next_location_id);
-        const auto& next_loc_objects = data.GetMapObjects(next_loc_id);
-        for (const auto& obj : next_loc_objects) {
-          if (obj.type == "player") {
-            player->SetPosition(obj.x, obj.y);
-          }
+        if (next_loc_id != -1) {
+          data.SetPlayerLocationId(next_loc_id);
+          auto spawn = data.GetSpawnPoint(next_loc_id);
+          player->SetPosition(spawn.first, spawn.second);
+        } else {
+          RenderSystem::SetDialogueText("System", {"No exit."});
         }
       }
       return;
     }
-    if (new_x < 39 && new_x > 0 && new_y < 14 && new_y > 0) {
+    int max_x = data.GetInterfaceConfig().map_width - 1;
+    int max_y = data.GetInterfaceConfig().map_height - 1;
+    if (new_x > 0 && new_x < max_x && new_y > 0 && new_y < max_y) {
       player->SetPosition(new_x, new_y);
     }
   } else if (cmd.type == InputType::kQuit) {

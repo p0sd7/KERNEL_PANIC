@@ -9,6 +9,23 @@
 
 namespace kernel {
 
+struct InterfaceConfig {
+  int screen_width = 80;
+  int screen_height = 24;
+  int map_width = 40;
+  int map_height = 15;
+  int map_offset_x = 2;
+  int map_offset_y = 3;
+  int inventory_y = 2;
+  int inventory_x = 44;
+  int inventory_width = 20;
+
+  int dialog_y = 18;
+  int dialog_height = 5;
+
+  int bar_width = 30;
+};
+
 struct LocationData {
   int id = -1;
   std::string name;
@@ -24,14 +41,11 @@ struct MapObjectData {
   std::string type;  // "player", "npc", "item", "boss", "trap", "exit"
   char symbol = '?';
   int x = 0, y = 0;
-  std::string ref_id;
+  int ref_id = -1;
   std::string special_condition;
 };
 
-enum class EnemyType {
-  kBoss,
-  kRandom,
-};
+enum class EnemyType { kBoss, kRandom };
 
 struct EnemyTemplate {
   int id = -1;
@@ -68,8 +82,40 @@ struct PuzzleData {
   int location_id = -1;
   std::string type;
   std::string solution_data;
-  std::string reward_item_id;
+  int reward_item_id = -1;
   std::string wrong_penalty;
+};
+
+enum class ItemType {
+  kHeal,
+  kScript,
+  kTrap,
+  kPuzzleItem,
+  kMemoryFrag,
+  kUnknown
+};
+
+struct NpcData {
+  int id = -1;
+  std::string name;
+  int default_dialog_id = -1;
+};
+
+struct ItemData {
+  int id = -1;
+  std::string name;
+  ItemType type = ItemType::kUnknown;
+  int effect_value = 0;
+  int script_id = -1;
+};
+
+struct MemoryFragmentData {
+  int id = -1;
+  std::string text;
+};
+
+struct BackgroundData {
+  std::vector<std::string> lines;
 };
 
 class DataStore {
@@ -78,28 +124,30 @@ class DataStore {
 
   int AddEntity(std::unique_ptr<Entity> entity);
   void RemoveEntity(int index);
-  Entity* GetEntity(int index);
+  Entity* GetEntity(int index) const;
   const std::vector<std::unique_ptr<Entity>>& GetEntities() const {
     return entities_;
   }
 
   const LocationData* GetLocationById(int id) const;
-  int GetLocationIdByName(const std::string& name) const;
   const std::vector<MapObjectData>& GetMapObjects(int location_id) const;
   const EnemyTemplate* GetEnemyTemplate(int id) const;
-  int GetEnemyIdByName(const std::string& name) const;
   const ScriptData* GetScriptById(int id) const;
-  int GetScriptIdByName(const std::string& name) const;
   std::vector<DialogueLine> GetDialoguesForNpc(const std::string& npc_id,
                                                int memory, int fragments) const;
-  int GetNpcDefaultDialogue(const std::string& npc_id) const;
-  int GetScriptIdByItemId(const std::string& item_id) const;
+  int GetNpcDefaultDialogue(int id) const;
+  const ItemData* GetItemById(int id) const;
   const std::vector<int>& GetEnemyGroup(int location_id) const;
-  const std::vector<std::string>& GetMemoryFragments() const;
+  const std::map<int, MemoryFragmentData>& GetMemoryFragments();
   const PuzzleData* GetPuzzleByLocation(int location_id) const;
+  const BackgroundData& GetBackground(int location_id) const;
+
+  void RemoveMapObject(int location_id, int object_id);
 
   void SetPlayerIndex(int idx) { player_index_ = idx; }
   int GetPlayerIndex() const { return player_index_; }
+  int GetPlayerLocationId() const { return player_location_id_; }
+  void SetPlayerLocationId(int id) { player_location_id_ = id; }
 
   void AddScriptToInventory(int script_id);
   bool HasScriptInInventory(int script_id) const;
@@ -108,29 +156,42 @@ class DataStore {
   }
   void SetMemoryPercent(int percent);
   int GetMemoryPercent() const { return memory_percent_; }
+  void IncrementFragments();
+  int GetFragments() const { return fragments_collected_; }
   void ResetPlayerForNewCycle();
+  const std::string& GetNpcName(int npc_id) const;
+  int GetLocationIdByName(std::string loc_name) const;
+
+  const InterfaceConfig& GetInterfaceConfig() const {
+    return interface_config_;
+  }
 
  private:
   std::vector<std::unique_ptr<Entity>> entities_;
   int player_index_ = -1;
+  int player_location_id_ = -1;
 
   std::map<int, LocationData> locations_;
-  std::map<std::string, int> location_name_to_id_;
   std::map<int, std::vector<MapObjectData>> map_objects_;
+  std::map<int, BackgroundData> backgrounds_;
   std::map<int, EnemyTemplate> enemy_templates_;
-  std::map<std::string, int> enemy_name_to_id_;
   std::map<int, ScriptData> scripts_;
-  std::map<std::string, int> script_name_to_id_;
   std::map<int, DialogueLine> dialogues_;
-  std::map<std::string, int> npc_default_dialogue_;
-  std::map<std::string, int> item_to_script_id_;
+  std::map<int, NpcData> npc_base_;
+  std::map<int, ItemData> items_;
   std::map<int, std::vector<int>> enemy_groups_;
-  std::vector<std::string> memory_fragments_;
+  std::map<int, MemoryFragmentData> memory_fragments_;
   std::map<int, PuzzleData> puzzles_;
 
-  // потом вынести в отдельную структуру
   std::vector<int> inventory_script_ids_;
   int memory_percent_ = 0;
+  int fragments_collected_ = 0;
+
+  InterfaceConfig interface_config_;
 };
 
 }  // namespace kernel
+
+// делаем ограничение чтобы игрок не выходил за карту, расставляем объекты по
+// карте, описываем взаимодействие с объектами в exploration_state, делаем
+// combat_state, dialogue_state, puzzle_state

@@ -7,22 +7,22 @@ namespace csv_column {
 constexpr const char* kLocId = "id";
 constexpr const char* kLocName = "name";
 constexpr const char* kLocAsciiBackground = "ascii_background";
-constexpr const char* kLocExitSymbol = "exit_symbol";
 constexpr const char* kLocForcedCombat = "forced_combat_on_enter";
 constexpr const char* kLocNextLocationId = "next_location_id";
 
 // map_objects.csv
-constexpr const char* kMapId = "id";
-constexpr const char* kMapLocationId = "location_id";
-constexpr const char* kMapType = "type";
-constexpr const char* kMapSymbol = "symbol";
-constexpr const char* kMapX = "x";
-constexpr const char* kMapY = "y";
-constexpr const char* kMapRefId = "ref_id";
-constexpr const char* kMapSpecialCondition = "special_condition";
+constexpr const char* kObjId = "id";
+constexpr const char* kObjLocationId = "location_id";
+constexpr const char* kObjType = "type";
+constexpr const char* kObjSymbol = "symbol";
+constexpr const char* kObjX = "x";
+constexpr const char* kObjY = "y";
+constexpr const char* kObjRefId = "ref_id";
+constexpr const char* kObjSpecialCondition = "special_condition";
 
 // npcs.csv
 constexpr const char* kNpcId = "id";
+constexpr const char* kNpcName = "name";
 constexpr const char* kNpcDefaultDialogue = "default_dialogue_id";
 
 // dialogues.csv
@@ -70,7 +70,6 @@ constexpr const char* kGroupSpawnChance = "spawn_chance";
 // memory_fragments.csv
 constexpr const char* kMemId = "id";
 constexpr const char* kMemText = "text_fragment";
-constexpr const char* kMemOrderIndex = "order_index";
 
 // puzzles.csv
 constexpr const char* kPuzzleId = "id";
@@ -79,6 +78,10 @@ constexpr const char* kPuzzleType = "type";
 constexpr const char* kPuzzleSolutionData = "solution_data";
 constexpr const char* kPuzzleRewardItemId = "reward_item_id";
 constexpr const char* kPuzzleWrongPenalty = "wrong_penalty";
+
+// graphic interface_config.csv
+constexpr const char* kInterfaceCfgKey = "key";
+constexpr const char* kInterfaceCfgValue = "value";
 
 }  // namespace csv_column
 }  // namespace kernel

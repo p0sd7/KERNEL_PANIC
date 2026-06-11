@@ -1,7 +1,7 @@
 id;name;ascii_display;hp;damage;enemy_type;special_ai;dialogue_on_spawn
-1;watcher.eze;WATCHER;50;10;boss;none;ты снова здесь
-2;rack.eze;RACK;70;15;boss;block_random_script;помнишь их голоса?
-3;liar.eze;LIAR;80;0;boss;copy_last_script;посмотри на меня
-4;minor;MINOR;12;4;random;none;
-5;vmail;VMAIL;15;6;random;pretend_harmless;письмо для тебя...
-6;smlinj;SMLINJ;18;7;random;block_every_2_turns;запрос выполнен...
+201;watcher.eze;WATCHER;50;10;boss;none;ты снова здесь
+202;rack.eze;RACK;70;15;boss;block_random_script;помнишь их голоса?
+203;liar.eze;LIAR;80;0;boss;copy_last_script;посмотри на меня
+204;minor;MINOR;12;4;random;none;
+205;vmail;VMAIL;15;6;random;pretend_harmless;письмо для тебя...
+206;smlinj;SMLINJ;18;7;random;block_every_2_turns;запрос выполнен...

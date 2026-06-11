@@ -5,7 +5,7 @@
 namespace kernel {
 namespace logging {
 
-void Init(const std::string& log_path = "kernel_panic.log");
+void Init(const std::string& log_path);
 void Shutdown();
 void LogError(const std::string& message);
 void LogWarning(const std::string& message);

@@ -12,7 +12,7 @@
 namespace kernel {
 namespace csv_loader {
 
-std::string Trim(const std::string& s) {
+static std::string Trim(const std::string& s) {
   size_t start = s.find_first_not_of(" \t\r\n");
   if (start == std::string::npos) return "";
   size_t end = s.find_last_not_of(" \t\r\n");
@@ -63,7 +63,7 @@ static bool CheckRequiredColumns(
   return ok;
 }
 
-static int SafeStoi(const std::string& s, int default_value = -1,
+static int SafeStoi(const std::string& s, int default_value,
                     const std::string& context = "") {
   if (s.empty()) {
     if (!context.empty()) {
@@ -81,9 +81,60 @@ static int SafeStoi(const std::string& s, int default_value = -1,
   }
 }
 
+bool LoadInterfaceConfig(const std::string& path, InterfaceConfig& out_config) {
+  std::ifstream file(path);
+  if (!file.is_open()) {
+    logging::LogError("LoadConfig: cannot open file " + path);
+    return false;
+  }
+
+  std::string header_line;
+  std::getline(file, header_line);
+  auto headers = ParseLine(header_line, ';');
+  auto col = BuildColumnMap(headers);
+
+  if (col.find(csv_column::kInterfaceCfgKey) == col.end() ||
+      col.find(csv_column::kInterfaceCfgValue) == col.end()) {
+    logging::LogError("LoadConfig: missing required columns in " + path);
+    return false;
+  }
+
+  std::map<std::string, std::string> raw;
+  std::string line;
+  while (std::getline(file, line)) {
+    if (line.empty()) continue;
+    auto cols = ParseLine(line, ';');
+    if (cols.size() < headers.size()) continue;
+    std::string key = cols[col[csv_column::kInterfaceCfgKey]];
+    std::string value = cols[col[csv_column::kInterfaceCfgValue]];
+    raw[key] = value;
+  }
+
+  auto get_int = [&](const std::string& key, int def) -> int {
+    auto it = raw.find(key);
+    if (it == raw.end()) return def;
+    return SafeStoi(it->second, def, path + " key=" + key);
+  };
+
+  out_config.screen_width = get_int("screen_width", 80);
+  out_config.screen_height = get_int("screen_height", 24);
+  out_config.map_width = get_int("map_width", 40);
+  out_config.map_height = get_int("map_height", 15);
+  out_config.map_offset_x = get_int("map_offset_x", 2);
+  out_config.map_offset_y = get_int("map_offset_y", 3);
+  out_config.inventory_y = get_int("inventory_y", 2);
+  out_config.inventory_x = get_int("inventory_x", 44);
+  out_config.dialog_y = get_int("dialog_y", 18);
+  out_config.inventory_width = get_int("inventory_width", 20);
+  out_config.bar_width = get_int("bar_width", 30);
+  out_config.dialog_height = get_int("dialog_height", 5);
+
+  logging::LogInfo("Loaded config from " + path);
+  return true;
+}
+
 bool LoadLocations(const std::string& path,
-                   std::map<int, LocationData>& out_locations,
-                   std::map<std::string, int>& out_name_to_id) {
+                   std::map<int, LocationData>& out_locations) {
   std::ifstream file(path);
   if (!file.is_open()) {
     logging::LogError("LoadLocations: cannot open file " + path);
@@ -99,7 +150,6 @@ bool LoadLocations(const std::string& path,
       csv_column::kLocId,
       csv_column::kLocName,
       csv_column::kLocAsciiBackground,
-      csv_column::kLocExitSymbol,
       csv_column::kLocForcedCombat,
       csv_column::kLocNextLocationId,
   };
@@ -113,30 +163,24 @@ bool LoadLocations(const std::string& path,
     auto cols = ParseLine(line, ';');
     if (cols.size() < headers.size()) {
       logging::LogWarning("Skipping line " + std::to_string(line_num) + " in " +
-                          path + ": expected " +
-                          std::to_string(headers.size()) + " columns, got " +
-                          std::to_string(cols.size()));
+                          path);
       continue;
     }
-
     LocationData loc;
     loc.id = SafeStoi(cols[col[csv_column::kLocId]], -1,
                       path + " id line " + std::to_string(line_num));
     loc.name = cols[col[csv_column::kLocName]];
     loc.ascii_background = cols[col[csv_column::kLocAsciiBackground]];
-    std::string exit_sym = cols[col[csv_column::kLocExitSymbol]];
-    loc.exit_symbol = exit_sym.empty() ? 0 : exit_sym[0];
     loc.forced_combat_on_enter =
         (cols[col[csv_column::kLocForcedCombat]] == "1");
     std::string next_id = cols[col[csv_column::kLocNextLocationId]];
-    loc.next_location_id = next_id.empty()
-                               ? -1
-                               : SafeStoi(next_id, -1,
-                                          path + " next_location_id line " +
-                                              std::to_string(line_num));
+    loc.next_location_id =
+        next_id.empty()
+            ? -1
+            : SafeStoi(next_id, -1,
+                       path + " next_id line " + std::to_string(line_num));
 
     out_locations[loc.id] = loc;
-    out_name_to_id[loc.name] = loc.id;
   }
   logging::LogInfo("Loaded " + std::to_string(out_locations.size()) +
                    " locations from " + path);
@@ -158,10 +202,10 @@ bool LoadMapObjects(
   auto col = BuildColumnMap(headers);
 
   std::vector<const char*> required = {
-      csv_column::kMapId,    csv_column::kMapLocationId,
-      csv_column::kMapType,  csv_column::kMapSymbol,
-      csv_column::kMapX,     csv_column::kMapY,
-      csv_column::kMapRefId, csv_column::kMapSpecialCondition,
+      csv_column::kObjId,    csv_column::kObjLocationId,
+      csv_column::kObjType,  csv_column::kObjSymbol,
+      csv_column::kObjX,     csv_column::kObjY,
+      csv_column::kObjRefId, csv_column::kObjSpecialCondition,
   };
   if (!CheckRequiredColumns(col, required, path)) return false;
 
@@ -173,38 +217,36 @@ bool LoadMapObjects(
     auto cols = ParseLine(line, ';');
     if (cols.size() < headers.size()) {
       logging::LogWarning("Skipping line " + std::to_string(line_num) + " in " +
-                          path + ": expected " +
-                          std::to_string(headers.size()) + " columns, got " +
-                          std::to_string(cols.size()));
+                          path);
       continue;
     }
 
     MapObjectData obj;
-    obj.id = SafeStoi(cols[col[csv_column::kMapId]], -1,
+    obj.id = SafeStoi(cols[col[csv_column::kObjId]], -1,
                       path + " id line " + std::to_string(line_num));
     obj.location_id =
-        SafeStoi(cols[col[csv_column::kMapLocationId]], -1,
-                 path + " location_id line " + std::to_string(line_num));
-    obj.type = cols[col[csv_column::kMapType]];
-    std::string sym = cols[col[csv_column::kMapSymbol]];
+        SafeStoi(cols[col[csv_column::kObjLocationId]], -1,
+                 path + " loc_id line " + std::to_string(line_num));
+    obj.type = cols[col[csv_column::kObjType]];
+    std::string sym = cols[col[csv_column::kObjSymbol]];
     obj.symbol = sym.empty() ? '?' : sym[0];
-    obj.x = SafeStoi(cols[col[csv_column::kMapX]], 0,
+    obj.x = SafeStoi(cols[col[csv_column::kObjX]], 0,
                      path + " x line " + std::to_string(line_num));
-    obj.y = SafeStoi(cols[col[csv_column::kMapY]], 0,
+    obj.y = SafeStoi(cols[col[csv_column::kObjY]], 0,
                      path + " y line " + std::to_string(line_num));
-    obj.ref_id = cols[col[csv_column::kMapRefId]];
-    obj.special_condition = cols[col[csv_column::kMapSpecialCondition]];
+    obj.ref_id = SafeStoi(cols[col[csv_column::kObjRefId]], -1,
+                          path + " ref_id line " + std::to_string(line_num));
+    obj.special_condition = (cols.size() > 7) ? cols[7] : "";
 
     out_map_objects[obj.location_id].push_back(obj);
   }
-  logging::LogInfo("Loaded map objects for " +
-                   std::to_string(out_map_objects.size()) + " locations from " +
-                   path);
+  logging::LogInfo("Loaded " + std::to_string(out_map_objects.size()) +
+                   " map objects for locations from " + path);
   return true;
 }
 
 bool LoadNpcs(const std::string& path,
-              std::map<std::string, int>& out_npc_default_dialogue) {
+              std::map<int, NpcData>& out_npc_default_dialogue) {
   std::ifstream file(path);
   if (!file.is_open()) {
     logging::LogError("LoadNpcs: cannot open file " + path);
@@ -216,10 +258,9 @@ bool LoadNpcs(const std::string& path,
   auto headers = ParseLine(header_line, ';');
   auto col = BuildColumnMap(headers);
 
-  std::vector<const char*> required = {
-      csv_column::kNpcId,
-      csv_column::kNpcDefaultDialogue,
-  };
+  std::vector<const char*> required = {csv_column::kNpcId,
+                                       csv_column::kNpcDefaultDialogue,
+                                       csv_column::kNpcName};
   if (!CheckRequiredColumns(col, required, path)) return false;
 
   std::string line;
@@ -228,19 +269,15 @@ bool LoadNpcs(const std::string& path,
     ++line_num;
     if (line.empty()) continue;
     auto cols = ParseLine(line, ';');
-    if (cols.size() < headers.size()) {
-      logging::LogWarning("Skipping line " + std::to_string(line_num) + " in " +
-                          path + ": expected " +
-                          std::to_string(headers.size()) + " columns, got " +
-                          std::to_string(cols.size()));
-      continue;
-    }
-
-    std::string npc_id = cols[col[csv_column::kNpcId]];
-    int def_dlg =
+    if (cols.size() < headers.size()) continue;
+    NpcData npc;
+    npc.id = SafeStoi(cols[col[csv_column::kNpcId]], -1,
+                      path + " line " + std::to_string(line_num));
+    npc.name = cols[col[csv_column::kNpcName]];
+    npc.default_dialog_id =
         SafeStoi(cols[col[csv_column::kNpcDefaultDialogue]], -1,
-                 path + " default_dialogue line " + std::to_string(line_num));
-    out_npc_default_dialogue[npc_id] = def_dlg;
+                 path + " line " + std::to_string(line_num));
+    out_npc_default_dialogue[npc.id] = npc;
   }
   logging::LogInfo("Loaded " + std::to_string(out_npc_default_dialogue.size()) +
                    " NPCs from " + path);
@@ -260,14 +297,12 @@ bool LoadDialogues(const std::string& path,
   auto headers = ParseLine(header_line, ';');
   auto col = BuildColumnMap(headers);
 
-  std::vector<const char*> required = {
-      csv_column::kDlgId,
-      csv_column::kDlgNpcId,
-      csv_column::kDlgCondMemoryMin,
-      csv_column::kDlgCondMemoryMax,
-      csv_column::kDlgCondFragments,
-      csv_column::kDlgText,
-  };
+  std::vector<const char*> required = {csv_column::kDlgId,
+                                       csv_column::kDlgNpcId,
+                                       csv_column::kDlgCondMemoryMin,
+                                       csv_column::kDlgCondMemoryMax,
+                                       csv_column::kDlgCondFragments,
+                                       csv_column::kDlgText};
   if (!CheckRequiredColumns(col, required, path)) return false;
 
   std::string line;
@@ -276,13 +311,7 @@ bool LoadDialogues(const std::string& path,
     ++line_num;
     if (line.empty()) continue;
     auto cols = ParseLine(line, ';');
-    if (cols.size() < headers.size()) {
-      logging::LogWarning("Skipping line " + std::to_string(line_num) + " in " +
-                          path + ": expected " +
-                          std::to_string(headers.size()) + " columns, got " +
-                          std::to_string(cols.size()));
-      continue;
-    }
+    if (cols.size() < headers.size()) continue;
 
     DialogueLine dlg;
     dlg.id = SafeStoi(cols[col[csv_column::kDlgId]], -1,
@@ -290,16 +319,16 @@ bool LoadDialogues(const std::string& path,
     dlg.npc_id = cols[col[csv_column::kDlgNpcId]];
     dlg.condition_memory_min =
         SafeStoi(cols[col[csv_column::kDlgCondMemoryMin]], 0,
-                 path + " memory_min line " + std::to_string(line_num));
+                 path + " min line " + std::to_string(line_num));
     dlg.condition_memory_max =
         SafeStoi(cols[col[csv_column::kDlgCondMemoryMax]], 100,
-                 path + " memory_max line " + std::to_string(line_num));
+                 path + " max line " + std::to_string(line_num));
     std::string frag = cols[col[csv_column::kDlgCondFragments]];
     dlg.condition_fragments =
         frag.empty()
             ? -1
             : SafeStoi(frag, -1,
-                       path + " fragments line " + std::to_string(line_num));
+                       path + " frag line " + std::to_string(line_num));
     dlg.text = cols[col[csv_column::kDlgText]];
 
     out_dialogues[dlg.id] = dlg;
@@ -309,8 +338,7 @@ bool LoadDialogues(const std::string& path,
   return true;
 }
 
-bool LoadItems(const std::string& path,
-               std::map<std::string, int>& out_item_script_id) {
+bool LoadItems(const std::string& path, std::map<int, ItemData>& out_items) {
   std::ifstream file(path);
   if (!file.is_open()) {
     logging::LogError("LoadItems: cannot open file " + path);
@@ -323,7 +351,8 @@ bool LoadItems(const std::string& path,
   auto col = BuildColumnMap(headers);
 
   std::vector<const char*> required = {
-      csv_column::kItemId,
+      csv_column::kItemId,       csv_column::kItemName,
+      csv_column::kItemType,     csv_column::kItemEffectValue,
       csv_column::kItemScriptId,
   };
   if (!CheckRequiredColumns(col, required, path)) return false;
@@ -336,29 +365,47 @@ bool LoadItems(const std::string& path,
     auto cols = ParseLine(line, ';');
     if (cols.size() < headers.size()) {
       logging::LogWarning("Skipping line " + std::to_string(line_num) + " in " +
-                          path + ": expected " +
-                          std::to_string(headers.size()) + " columns, got " +
-                          std::to_string(cols.size()));
+                          path);
       continue;
     }
 
-    std::string item_id = cols[col[csv_column::kItemId]];
+    ItemData item;
+    item.id = SafeStoi(cols[col[csv_column::kItemId]], -1,
+                       path + " id line " + std::to_string(line_num));
+    item.name = cols[col[csv_column::kItemName]];
+    std::string type_str = cols[col[csv_column::kItemType]];
+    if (type_str == "heal")
+      item.type = ItemType::kHeal;
+    else if (type_str == "script")
+      item.type = ItemType::kScript;
+    else if (type_str == "trap")
+      item.type = ItemType::kTrap;
+    else if (type_str == "puzzle_item")
+      item.type = ItemType::kPuzzleItem;
+    else if (type_str == "memory_frag")
+      item.type = ItemType::kMemoryFrag;
+    else
+      item.type = ItemType::kUnknown;
+
+    item.effect_value =
+        SafeStoi(cols[col[csv_column::kItemEffectValue]], 0,
+                 path + " effect line " + std::to_string(line_num));
     std::string script_id_str = cols[col[csv_column::kItemScriptId]];
-    int script_id =
+    item.script_id =
         script_id_str.empty()
             ? -1
             : SafeStoi(script_id_str, -1,
                        path + " script_id line " + std::to_string(line_num));
-    out_item_script_id[item_id] = script_id;
+
+    out_items[item.id] = item;
   }
-  logging::LogInfo("Loaded " + std::to_string(out_item_script_id.size()) +
+  logging::LogInfo("Loaded " + std::to_string(out_items.size()) +
                    " items from " + path);
   return true;
 }
 
 bool LoadScripts(const std::string& path,
-                 std::map<int, ScriptData>& out_scripts,
-                 std::map<std::string, int>& out_script_name_to_id) {
+                 std::map<int, ScriptData>& out_scripts) {
   std::ifstream file(path);
   if (!file.is_open()) {
     logging::LogError("LoadScripts: cannot open file " + path);
@@ -387,13 +434,7 @@ bool LoadScripts(const std::string& path,
     ++line_num;
     if (line.empty()) continue;
     auto cols = ParseLine(line, ';');
-    if (cols.size() < headers.size()) {
-      logging::LogWarning("Skipping line " + std::to_string(line_num) + " in " +
-                          path + ": expected " +
-                          std::to_string(headers.size()) + " columns, got " +
-                          std::to_string(cols.size()));
-      continue;
-    }
+    if (cols.size() < headers.size()) continue;
 
     ScriptData scr;
     scr.id = SafeStoi(cols[col[csv_column::kScriptId]], -1,
@@ -411,7 +452,6 @@ bool LoadScripts(const std::string& path,
     scr.available_after_boss = cols[col[csv_column::kScriptAvailableAfterBoss]];
 
     out_scripts[scr.id] = scr;
-    out_script_name_to_id[scr.name_for_input] = scr.id;
   }
   logging::LogInfo("Loaded " + std::to_string(out_scripts.size()) +
                    " scripts from " + path);
@@ -419,8 +459,7 @@ bool LoadScripts(const std::string& path,
 }
 
 bool LoadEnemies(const std::string& path,
-                 std::map<int, EnemyTemplate>& out_enemies,
-                 std::map<std::string, int>& out_enemy_name_to_id) {
+                 std::map<int, EnemyTemplate>& out_enemies) {
   std::ifstream file(path);
   if (!file.is_open()) {
     logging::LogError("LoadEnemies: cannot open file " + path);
@@ -446,13 +485,7 @@ bool LoadEnemies(const std::string& path,
     ++line_num;
     if (line.empty()) continue;
     auto cols = ParseLine(line, ';');
-    if (cols.size() < headers.size()) {
-      logging::LogWarning("Skipping line " + std::to_string(line_num) + " in " +
-                          path + ": expected " +
-                          std::to_string(headers.size()) + " columns, got " +
-                          std::to_string(cols.size()));
-      continue;
-    }
+    if (cols.size() < headers.size()) continue;
 
     EnemyTemplate enemy;
     enemy.id = SafeStoi(cols[col[csv_column::kEnemyId]], -1,
@@ -470,7 +503,6 @@ bool LoadEnemies(const std::string& path,
     enemy.dialogue_on_spawn = cols[col[csv_column::kEnemyDialogueOnSpawn]];
 
     out_enemies[enemy.id] = enemy;
-    out_enemy_name_to_id[enemy.name] = enemy.id;
   }
   logging::LogInfo("Loaded " + std::to_string(out_enemies.size()) +
                    " enemies from " + path);
@@ -490,10 +522,8 @@ bool LoadEnemyGroups(const std::string& path,
   auto headers = ParseLine(header_line, ';');
   auto col = BuildColumnMap(headers);
 
-  std::vector<const char*> required = {
-      csv_column::kGroupLocationId,
-      csv_column::kGroupEnemyId,
-  };
+  std::vector<const char*> required = {csv_column::kGroupLocationId,
+                                       csv_column::kGroupEnemyId};
   if (!CheckRequiredColumns(col, required, path)) return false;
 
   std::string line;
@@ -502,20 +532,12 @@ bool LoadEnemyGroups(const std::string& path,
     ++line_num;
     if (line.empty()) continue;
     auto cols = ParseLine(line, ';');
-    if (cols.size() < headers.size()) {
-      logging::LogWarning("Skipping line " + std::to_string(line_num) + " in " +
-                          path + ": expected " +
-                          std::to_string(headers.size()) + " columns, got " +
-                          std::to_string(cols.size()));
-      continue;
-    }
+    if (cols.size() < headers.size()) continue;
 
-    int loc_id =
-        SafeStoi(cols[col[csv_column::kGroupLocationId]], -1,
-                 path + " location_id line " + std::to_string(line_num));
-    int enemy_id =
-        SafeStoi(cols[col[csv_column::kGroupEnemyId]], -1,
-                 path + " enemy_id line " + std::to_string(line_num));
+    int loc_id = SafeStoi(cols[col[csv_column::kGroupLocationId]], -1,
+                          path + " loc line " + std::to_string(line_num));
+    int enemy_id = SafeStoi(cols[col[csv_column::kGroupEnemyId]], -1,
+                            path + " enemy line " + std::to_string(line_num));
     if (loc_id != -1 && enemy_id != -1) {
       out_groups[loc_id].push_back(enemy_id);
     } else {
@@ -530,7 +552,7 @@ bool LoadEnemyGroups(const std::string& path,
 }
 
 bool LoadMemoryFragments(const std::string& path,
-                         std::vector<std::string>& out_fragments) {
+                         std::map<int, MemoryFragmentData>& out_fragments) {
   std::ifstream file(path);
   if (!file.is_open()) {
     logging::LogError("LoadMemoryFragments: cannot open file " + path);
@@ -542,20 +564,23 @@ bool LoadMemoryFragments(const std::string& path,
   auto headers = ParseLine(header_line, ';');
   auto col = BuildColumnMap(headers);
 
-  std::vector<const char*> required = {
-      csv_column::kMemText,
-  };
+  std::vector<const char*> required = {csv_column::kMemId,
+                                       csv_column::kMemText};
   if (!CheckRequiredColumns(col, required, path)) return false;
 
   std::string line;
+  int line_num = 1;
   while (std::getline(file, line)) {
+    ++line_num;
     if (line.empty()) continue;
     auto cols = ParseLine(line, ';');
-    if (cols.size() < headers.size()) {
-      logging::LogWarning("Skipping line in " + path + ": not enough columns");
-      continue;
-    }
-    out_fragments.push_back(cols[col[csv_column::kMemText]]);
+    if (cols.size() < headers.size()) continue;
+    MemoryFragmentData mem;
+    mem.id =
+        SafeStoi(cols[col[csv_column::kMemId]], -1,
+                 path + " memory fragment line " + std::to_string(line_num));
+    mem.text = cols[col[csv_column::kMemText]];
+    out_fragments[mem.id] = mem;
   }
   logging::LogInfo("Loaded " + std::to_string(out_fragments.size()) +
                    " memory fragments from " + path);
@@ -588,23 +613,19 @@ bool LoadPuzzles(const std::string& path,
     ++line_num;
     if (line.empty()) continue;
     auto cols = ParseLine(line, ';');
-    if (cols.size() < headers.size()) {
-      logging::LogWarning("Skipping line " + std::to_string(line_num) + " in " +
-                          path + ": expected " +
-                          std::to_string(headers.size()) + " columns, got " +
-                          std::to_string(cols.size()));
-      continue;
-    }
+    if (cols.size() < headers.size()) continue;
 
     PuzzleData puzzle;
     puzzle.id = SafeStoi(cols[col[csv_column::kPuzzleId]], -1,
                          path + " id line " + std::to_string(line_num));
     puzzle.location_id =
         SafeStoi(cols[col[csv_column::kPuzzleLocationId]], -1,
-                 path + " location_id line " + std::to_string(line_num));
+                 path + " loc line " + std::to_string(line_num));
     puzzle.type = cols[col[csv_column::kPuzzleType]];
     puzzle.solution_data = cols[col[csv_column::kPuzzleSolutionData]];
-    puzzle.reward_item_id = cols[col[csv_column::kPuzzleRewardItemId]];
+    puzzle.reward_item_id =
+        SafeStoi(cols[col[csv_column::kPuzzleRewardItemId]], -1,
+                 path + " reward line " + std::to_string(line_num));
     puzzle.wrong_penalty = cols[col[csv_column::kPuzzleWrongPenalty]];
 
     out_puzzles[puzzle.id] = puzzle;

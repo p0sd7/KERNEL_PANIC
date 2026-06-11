@@ -1,5 +1,5 @@
-id;default_dialogue_id
-corrupted_log;1
-stray_process;2
-guide.old;3
-healer.dll;4
+id;name;default_dialogue_id
+101;corrupted_log;1
+102;stray_process;2
+103;guide.old;3
+104;healer.dll;4

@@ -1,9 +1,9 @@
-id;name;ascii_background;exit_symbol;forced_combat_on_enter;next_location_id
-1;/ash;точки пепла;exit;0;2
-2;/tmp;мерцающие символы # * / \ |;LOCKED;1;3
-3;/chain;коридор из стен #; ;0;4
-4;/xshaw;площадка с пультом;;0;5
-5;/abyss;узкая тропа #;%;1;6
-6;/recover;пусто;;0;7
-7;/root;зал с колоннами #;@;0;8
-8;/;пусто, зеркало;;0;
+id;name;ascii_background;forced_combat_on_enter;next_location_id
+1;/ash;backgrounds/ash.txt;0;2
+2;/tmp;backgrounds/tmp.txt;1;3
+3;/chain;backgrounds/chain.txt;0;4
+4;/xshaw;backgrounds/xshaw.txt;0;5
+5;/abyss;backgrounds/abyss.txt;1;6
+6;/recover;backgrounds/recover.txt;0;7
+7;/root;backgrounds/root.txt;0;8
+8;/;backgrounds/final.txt;0;

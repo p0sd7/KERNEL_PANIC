@@ -1,0 +1,13 @@
+key;value
+screen_width;80
+screen_height;24
+map_width;40
+map_height;15
+map_offset_x;2
+map_offset_y;3
+inventory_y;2
+inventory_x;44
+inventory_width;20
+dialog_y;18
+dialog_height;5
+bar_width;30

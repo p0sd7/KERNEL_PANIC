@@ -12,15 +12,12 @@ set(SOURCES
     src/CombatSystem/script_executor.cpp
     src/Entities/entity.cpp
     src/InputSystem/input_handler.cpp
-    src/LogicSystem/base_state.cpp
     src/LogicSystem/combat_state.cpp
     src/LogicSystem/dialogue_state.cpp
     src/LogicSystem/exploration_state.cpp
     src/LogicSystem/final_state.cpp
     src/LogicSystem/game.cpp
     src/LogicSystem/gameover_state.cpp
-    src/LogicSystem/inventory.cpp
-    src/LogicSystem/player_context.cpp
     src/LogicSystem/puzzle_state.cpp
     src/RenderSystem/ascii_art.cpp
     src/RenderSystem/console_renderer.cpp

@@ -31,17 +31,29 @@ InputCommand PollEvents() {
       cmd = {InputType::kMove, 1, 0};
       break;
     case '\n':
-      cmd = {InputType::kTextInput, 0, 0, ""};  // потом отдельно обрабатываем
+      cmd = {InputType::kConfirm, 0, 0, ""};
       break;
     case 'q':
     case 'Q':
       cmd = {InputType::kQuit};
       break;
     default:
-      cmd = {InputType::kConfirm};
+      cmd = {InputType::kNone};
       break;
   }
   return cmd;
+}
+
+std::string ReadString() {
+  nodelay(stdscr, FALSE);
+  echo();
+  curs_set(1);
+  char buf[256];
+  getstr(buf);
+  noecho();
+  curs_set(0);
+  nodelay(stdscr, TRUE);
+  return std::string(buf);
 }
 
 }  // namespace InputSystem

@@ -145,6 +145,19 @@ const ScriptData* DataStore::GetScriptById(int id) const {
   return (it != scripts_.end()) ? &it->second : nullptr;
 }
 
+const std::vector<EnemyGroup>& DataStore::GetEnemyGroup(int location_id) const {
+  static const std::vector<EnemyGroup> empty;
+  auto it = enemy_groups_.find(location_id);
+  return (it != enemy_groups_.end()) ? it->second : empty;
+}
+
+int DataStore::GetScriptIdByName(const std::string& name) const {
+  for (const auto& [id, scr] : scripts_) {
+    if (scr.name_for_input == name) return id;
+  }
+  return -1;
+}
+
 std::vector<DialogueLine> DataStore::GetDialoguesForNpc(int npc_id, int memory,
                                                         int fragments) const {
   std::vector<DialogueLine> result;
@@ -162,12 +175,6 @@ std::vector<DialogueLine> DataStore::GetDialoguesForNpc(int npc_id, int memory,
 const ItemData* DataStore::GetItemById(int id) const {
   auto it = items_.find(id);
   return (it != items_.end()) ? &it->second : nullptr;
-}
-
-const std::vector<int>& DataStore::GetEnemyGroup(int location_id) const {
-  static const std::vector<int> empty;
-  auto it = enemy_groups_.find(location_id);
-  return (it != enemy_groups_.end()) ? it->second : empty;
 }
 
 const std::map<int, MemoryFragmentData>& DataStore::GetMemoryFragments() const {

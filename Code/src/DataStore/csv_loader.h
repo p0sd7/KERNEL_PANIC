@@ -34,7 +34,7 @@ bool LoadEnemies(const std::string& path,
                  std::map<int, EnemyTemplate>& out_enemies);
 
 bool LoadEnemyGroups(const std::string& path,
-                     std::map<int, std::vector<int>>& out_groups);
+                     std::map<int, std::vector<EnemyGroup>>& out_groups);
 
 bool LoadMemoryFragments(const std::string& path,
                          std::map<int, MemoryFragmentData>& out_fragments);

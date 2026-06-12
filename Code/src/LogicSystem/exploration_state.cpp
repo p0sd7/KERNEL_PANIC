@@ -1,8 +1,12 @@
 #include "exploration_state.h"
 
+#include <cstdlib>
+#include <ctime>
+
 #include "../DataStore/data_store.h"
 #include "../Logging/logger.h"
 #include "../RenderSystem/console_renderer.h"
+#include "combat_state.h"
 #include "dialogue_state.h"
 #include "game.h"
 
@@ -80,16 +84,67 @@ void ExplorationState::HandleInput(const InputCommand& cmd, DataStore& data) {
         game_->PushState(
             std::make_unique<DialogueState>(data, target_obj->ref_id));
       } else if (target_obj->type == "boss") {
-        RenderSystem::SetDialogueText("Boss", {"I'm the boss!"});
+        int enemy_id = target_obj->ref_id;
+        const auto* enemy_templ = data.GetEnemyTemplate(enemy_id);
+        if (!enemy_templ) {
+          RenderSystem::SetDialogueText("System", {"Unknown boss."});
+          return;
+        }
+        auto enemy_entity = std::make_unique<Entity>(
+            enemy_templ->id, EntityType::kBoss, target_obj->symbol,
+            target_obj->x, target_obj->y);
+        enemy_entity->SetStat(StatType::kHp, enemy_templ->hp);
+        enemy_entity->SetStat(StatType::kMaxHp, enemy_templ->hp);
+        enemy_entity->SetStat(StatType::kDamage, enemy_templ->damage);
+        enemy_entity->SetStat(StatType::kEnemyId, enemy_templ->id);
+        int enemy_idx = data.AddEntity(std::move(enemy_entity));
+        std::vector<int> enemy_indices = {enemy_idx};
+        game_->PushState(
+            std::make_unique<CombatState>(data, enemy_indices, true));
+        return;
       } else if (target_obj->type == "exit") {
         int next_loc_id = loc->next_location_id;
         if (next_loc_id != -1) {
           data.GetPlayer().location_id = next_loc_id;
           auto spawn = data.GetSpawnPoint(next_loc_id);
           player->SetPosition(spawn.first, spawn.second);
+          // Принудительный бой при входе в локацию
+          const auto* new_loc = data.GetLocationById(next_loc_id);
+          if (new_loc && new_loc->forced_combat_on_enter) {
+            const auto& group_entries = data.GetEnemyGroup(next_loc_id);
+            if (group_entries.empty()) {
+              RenderSystem::SetDialogueText("System", {"No enemies defined."});
+              return;
+            }
+            std::vector<int> enemy_indices;
+            for (const auto& entry : group_entries) {
+              int count = entry.min_count;
+              if (entry.max_count > entry.min_count) {
+                count += rand() % (entry.max_count - entry.min_count + 1);
+              }
+              for (int i = 0; i < count; ++i) {
+                const auto* enemy_templ = data.GetEnemyTemplate(entry.enemy_id);
+                if (!enemy_templ) continue;
+                auto enemy_entity = std::make_unique<Entity>(
+                    enemy_templ->id, EntityType::kBoss, '?', spawn.first + i,
+                    spawn.second);
+                enemy_entity->SetStat(StatType::kHp, enemy_templ->hp);
+                enemy_entity->SetStat(StatType::kMaxHp, enemy_templ->hp);
+                enemy_entity->SetStat(StatType::kDamage, enemy_templ->damage);
+                enemy_entity->SetStat(StatType::kEnemyId, enemy_templ->id);
+                enemy_indices.push_back(
+                    data.AddEntity(std::move(enemy_entity)));
+              }
+            }
+            if (!enemy_indices.empty()) {
+              game_->PushState(
+                  std::make_unique<CombatState>(data, enemy_indices, false));
+            }
+          }
         } else {
           RenderSystem::SetDialogueText("System", {"No exit."});
         }
+        return;
       }
       return;
     }

@@ -508,7 +508,7 @@ bool LoadEnemies(const std::string& path,
 }
 
 bool LoadEnemyGroups(const std::string& path,
-                     std::map<int, std::vector<int>>& out_groups) {
+                     std::map<int, std::vector<EnemyGroup>>& out_groups) {
   std::ifstream file(path);
   if (!file.is_open()) {
     logging::LogError("LoadEnemyGroups: cannot open file " + path);
@@ -520,8 +520,10 @@ bool LoadEnemyGroups(const std::string& path,
   auto headers = ParseLine(header_line, ';');
   auto col = BuildColumnMap(headers);
 
-  std::vector<const char*> required = {csv_column::kGroupLocationId,
-                                       csv_column::kGroupEnemyId};
+  std::vector<const char*> required = {
+      csv_column::kGroupLocationId, csv_column::kGroupEnemyId,
+      csv_column::kGroupMinCount, csv_column::kGroupMaxCount,
+      csv_column::kGroupSpawnChance};
   if (!CheckRequiredColumns(col, required, path)) return false;
 
   std::string line;
@@ -536,11 +538,19 @@ bool LoadEnemyGroups(const std::string& path,
                           path + " loc line " + std::to_string(line_num));
     int enemy_id = SafeStoi(cols[col[csv_column::kGroupEnemyId]], -1,
                             path + " enemy line " + std::to_string(line_num));
-    if (loc_id != -1 && enemy_id != -1)
-      out_groups[loc_id].push_back(enemy_id);
-    else
+    int min_c = SafeStoi(cols[col[csv_column::kGroupMinCount]], 1,
+                         path + " min line " + std::to_string(line_num));
+    int max_c = SafeStoi(cols[col[csv_column::kGroupMaxCount]], 1,
+                         path + " max line " + std::to_string(line_num));
+    int chance = SafeStoi(cols[col[csv_column::kGroupSpawnChance]], 100,
+                          path + " chance line " + std::to_string(line_num));
+
+    if (loc_id != -1 && enemy_id != -1) {
+      out_groups[loc_id].push_back({enemy_id, min_c, max_c, chance});
+    } else {
       logging::LogWarning("Skipping line " + std::to_string(line_num) + " in " +
                           path + " due to invalid IDs");
+    }
   }
   logging::LogInfo("Loaded enemy groups for " +
                    std::to_string(out_groups.size()) + " locations from " +

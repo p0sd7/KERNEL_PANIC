@@ -1,0 +1,14 @@
+#pragma once
+
+#include "base_state.h"
+
+namespace kernel {
+
+class GameOverState : public BaseState {
+ public:
+  void HandleInput(const InputCommand& cmd, DataStore& data) override;
+  void Update(float delta, DataStore& data) override;
+  void Draw(const DataStore& data) override;
+};
+
+}  // namespace kernel

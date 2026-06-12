@@ -55,6 +55,13 @@ struct EnemyTemplate {
   std::string dialogue_on_spawn;
 };
 
+struct EnemyGroup {
+  int enemy_id = -1;
+  int min_count = 1;
+  int max_count = 1;
+  int spawn_chance = 100;
+};
+
 struct DialogueLine {
   int id = -1;
   int npc_id;
@@ -139,10 +146,11 @@ class DataStore {
   const std::vector<MapObjectData>& GetMapObjects(int location_id) const;
   const EnemyTemplate* GetEnemyTemplate(int id) const;
   const ScriptData* GetScriptById(int id) const;
+  int GetScriptIdByName(const std::string& name) const;
   std::vector<DialogueLine> GetDialoguesForNpc(int npc_id, int memory,
                                                int fragments) const;
   const ItemData* GetItemById(int id) const;
-  const std::vector<int>& GetEnemyGroup(int location_id) const;
+  const std::vector<EnemyGroup>& GetEnemyGroup(int location_id) const;
   const std::map<int, MemoryFragmentData>& GetMemoryFragments() const;
   const PuzzleData* GetPuzzleByLocation(int location_id) const;
   const BackgroundData& GetBackground(int location_id) const;
@@ -181,9 +189,9 @@ class DataStore {
   std::map<int, DialogueLine> dialogues_;
   std::map<int, NpcData> npc_base_;
   std::map<int, ItemData> items_;
-  std::map<int, std::vector<int>> enemy_groups_;
   std::map<int, MemoryFragmentData> memory_fragments_;
   std::map<int, PuzzleData> puzzles_;
+  std::map<int, std::vector<EnemyGroup>> enemy_groups_;
 
   InterfaceConfig interface_config_;
 };

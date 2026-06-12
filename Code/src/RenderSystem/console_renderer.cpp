@@ -26,6 +26,9 @@ static int dialog_y_;
 static int dialog_height_;
 static int bar_width_;
 
+static int input_y_ = 0;
+static int input_x_ = 0;
+
 static std::vector<std::string> g_dialog_lines = {"..."};
 static std::string g_dialog_target = "Silence";
 
@@ -52,6 +55,8 @@ void Init(const InterfaceConfig& config) {
 }
 
 void Shutdown() { endwin(); }
+
+void FlushInput() { flushinp(); }
 
 void Clear() { ::clear(); }
 
@@ -127,15 +132,45 @@ void DrawInventory(const DataStore& data, int player_idx) {
 }
 
 void DrawCombat(const DataStore& data, int player_idx,
-                const std::vector<int>& enemy_indices, const std::string& log) {
-  (void)data;
-  (void)player_idx;
-  (void)enemy_indices;
-  (void)log;
+                const std::vector<int>& enemy_indices, const std::string& log,
+                int highlight_enemy) {
   clear();
-  mvprintw(0, 0, "COMBAT MODE");
-  mvprintw(2, 0, "Log: %s", log.c_str());
-  mvprintw(5, 0, "Enter script: ");
+
+  const Entity* player = data.GetEntity(player_idx);
+  int hp = player ? player->GetStat(StatType::kHp) : 0;
+  int max_hp = player ? player->GetStat(StatType::kMaxHp) : 100;
+  int memory = data.GetMemoryPercent();
+  DrawTopBar(hp, max_hp, memory);
+
+  int start_y = 3;
+  int start_x = 2;
+  mvprintw(start_y, start_x, "Enemies:");
+  for (size_t i = 0; i < enemy_indices.size(); ++i) {
+    int idx = enemy_indices[i];
+    const Entity* enemy = data.GetEntity(idx);
+    if (!enemy) continue;
+    int enemy_id = enemy->GetStat(StatType::kEnemyId);
+    const auto* enemy_templ = data.GetEnemyTemplate(enemy_id);
+    std::string name = enemy_templ ? enemy_templ->name : "Unknown";
+    int hp_curr = enemy->GetStat(StatType::kHp);
+    int hp_max = enemy->GetStat(StatType::kMaxHp);
+    int percent = (hp_max > 0) ? (hp_curr * 100) / hp_max : 0;
+    // Подсветка выбранного врага
+    if (static_cast<int>(i) == highlight_enemy) {
+      attron(A_REVERSE);
+    }
+    mvprintw(start_y + 1, start_x + i * 20, "[%d] %s %d%%", i + 1, name.c_str(),
+             percent);
+    if (static_cast<int>(i) == highlight_enemy) {
+      attroff(A_REVERSE);
+    }
+  }
+
+  input_y_ = screen_height_ - 3;
+  input_x_ = 2;
+  mvprintw(input_y_, input_x_, "> ");
+  move(input_y_, input_x_ + 2);
+  refresh();
 }
 
 void DrawDialogue(const std::string& target_name,
@@ -171,6 +206,16 @@ void DrawFinal(const std::string& prompt) {
 }
 
 void Present() { refresh(); }
+
+void GetInputPosition(int& y, int& x) {
+  y = screen_height_ - 3;
+  x = 4;
+}
+
+void SetCursorPosition(int y, int x) {
+  move(y, x);
+  refresh();
+}
 
 }  // namespace RenderSystem
 }  // namespace kernel

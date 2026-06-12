@@ -4,6 +4,7 @@
 
 #include <ncurses.h>
 
+#include <chrono>
 #include <clocale>
 #include <string>
 #include <vector>
@@ -29,6 +30,10 @@ static int bar_width_;
 
 static int input_y_ = 0;
 static int input_x_ = 0;
+
+static std::chrono::steady_clock::time_point g_dialog_timer_start;
+static bool g_dialog_timer_active = false;
+static int g_dialog_timer_seconds = 5;
 
 static std::vector<std::string> g_dialog_lines = {"..."};
 static std::string g_dialog_target = "Silence";
@@ -86,6 +91,15 @@ void SetDialogueText(const std::string& target,
                      const std::vector<std::string>& lines) {
   g_dialog_target = target;
   g_dialog_lines = lines;
+  g_dialog_timer_active = false;
+}
+
+void SetTemporaryDialogue(const std::string& target,
+                          const std::vector<std::string>& lines, int seconds) {
+  SetDialogueText(target, lines);
+  g_dialog_timer_active = true;
+  g_dialog_timer_start = std::chrono::steady_clock::now();
+  g_dialog_timer_seconds = seconds;
 }
 
 void SetCombatDialogue(const std::string& target,
@@ -106,6 +120,15 @@ void DrawExploration(const DataStore& data, int player_idx) {
   if (!bg.lines.empty()) grid = bg.lines;
 
   DrawInventory(data, player_idx);
+  if (g_dialog_timer_active) {
+    auto now = std::chrono::steady_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+                       now - g_dialog_timer_start)
+                       .count();
+    if (elapsed >= g_dialog_timer_seconds) {
+      SetDialogueText("Silence", {"..."});
+    }
+  }
   DrawDialogue(g_dialog_target, g_dialog_lines);
 
   const auto& objects = data.GetMapObjects(loc_id);

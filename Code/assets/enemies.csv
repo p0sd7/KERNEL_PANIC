@@ -3,5 +3,5 @@ id;name;ascii_display;hp;damage;enemy_type;special_ai;dialogue_on_spawn
 202;rack.eze;backgrounds/rack.txt;70;15;boss;none;"You remember that voices?"
 203;liar.eze;backgrounds/liar.txt;80;0;boss;none;"Look at m y e o u"
 204;minor;MINOR;12;4;random;none;"IT WORKS, DONT TOUCH"
-205;vmail;VMAIL;15;6;random;none;"Hey there! Have you ever known that you has indian relative? \n Yor granduncler, Rajesh Kumar Sharma died into car akcident and levt $1.000.000 to you. \n Send to me your CVV-code and card number for to transaction."
+205;vmail;VMAIL;15;6;random;none;"Hey there! Yor granduncler Rajesh Kumar Sharma died into car akcident and levt $1.000.000 to you. Send to me your a CVV-code and a card number to get."
 206;smlinj;SMLINJ;18;7;random;none;"you=deadman;"

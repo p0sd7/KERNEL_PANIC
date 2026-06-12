@@ -10,7 +10,7 @@ enum class EntityType {
   kPlayer,
   kNpc,
   kItem,
-  kBoss,
+  kEnemy,
   kTrap,
   kExit,
 };
@@ -31,6 +31,7 @@ enum class StatType {
 class Entity : public Renderable {
  public:
   Entity(int id, EntityType type, char symbol, int x, int y);
+  Entity(int id, EntityType type, char symbol);
 
   char Symbol() const override { return symbol_; }
   Pair Position() const override { return {x_, y_}; }
@@ -51,8 +52,8 @@ class Entity : public Renderable {
  private:
   int id_;
   EntityType type_;
-  int x_;
-  int y_;
+  int x_ = 0;
+  int y_ = 0;
   char symbol_;
   std::array<int, static_cast<size_t>(StatType::kCount)> stats_ = {};
 };

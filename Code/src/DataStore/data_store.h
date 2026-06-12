@@ -125,7 +125,7 @@ struct BackgroundData {
 struct PlayerState {
   int entity_index = -1;
   int memory_percent = 0;
-  std::vector<int> inventory_items;
+  std::vector<int> inventory;
   int fragments_collected = 0;
   int location_id = -1;
 };
@@ -163,7 +163,7 @@ class DataStore {
   void AddScriptToInventory(int script_id);
   bool HasScriptInInventory(int script_id) const;
   const std::vector<int>& GetInventoryScripts() const {
-    return player_.inventory_items;
+    return player_.inventory;
   }
   void SetMemoryPercent(int percent);
   int GetMemoryPercent() const { return player_.memory_percent; }

@@ -32,6 +32,9 @@ void SetDialogueText(const std::string& target,
                      const std::vector<std::string>& lines);
 void SetCombatDialogue(const std::string& target,
                        const std::vector<std::string>& lines);
+void SetTemporaryDialogue(const std::string& target,
+                          const std::vector<std::string>& lines,
+                          int seconds = 3);
 void GetInputPosition(int& y, int& x);
 void SetCursorPosition(int y, int x);
 void FlushInput();

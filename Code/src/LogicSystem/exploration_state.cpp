@@ -9,7 +9,7 @@
 #include "combat_state.h"
 #include "dialogue_state.h"
 #include "game.h"
-
+#include "puzzle_state.h"
 namespace kernel {
 
 ExplorationState::ExplorationState() = default;
@@ -25,6 +25,7 @@ void ExplorationState::HandleInput(const InputCommand& cmd, DataStore& data) {
 
     int loc_id = data.GetPlayer().location_id;
     const auto* loc = data.GetLocationById(loc_id);
+    int next_loc_id = loc->next_location_id;
     const auto& objects = data.GetMapObjects(loc_id);
 
     const MapObjectData* target_obj = nullptr;
@@ -43,7 +44,7 @@ void ExplorationState::HandleInput(const InputCommand& cmd, DataStore& data) {
         if (!item) {
           logging::LogError("Unknown item id: " +
                             std::to_string(target_obj->ref_id));
-          RenderSystem::SetDialogueText("System", {"Unknown item"});
+          RenderSystem::SetTemporaryDialogue("System", {"Unknown item"});
           return;
         }
         int current_hp = player->GetStat(StatType::kHp);
@@ -59,11 +60,7 @@ void ExplorationState::HandleInput(const InputCommand& cmd, DataStore& data) {
             break;
           case ItemType::kTrap:
             player->SetStat(StatType::kHp, current_hp - item->effect_value);
-            RenderSystem::SetDialogueText(
-                "Trap", {"You trigger a trap and lose " +
-                         std::to_string(item->effect_value) + " HP."});
-            break;
-          case ItemType::kPuzzleItem:
+            RenderSystem::SetTemporaryDialogue("LNK2019", {"hurts, isn't it?"});
             break;
           case ItemType::kMemoryFrag: {
             data.IncrementFragments();
@@ -73,7 +70,7 @@ void ExplorationState::HandleInput(const InputCommand& cmd, DataStore& data) {
             std::string msg = (it != fragments.end())
                                   ? it->second.text
                                   : "Unknown memory fragment";
-            RenderSystem::SetDialogueText("memory fragment", {msg});
+            RenderSystem::SetTemporaryDialogue("memory fragment", {msg});
             break;
           }
           default:
@@ -84,65 +81,38 @@ void ExplorationState::HandleInput(const InputCommand& cmd, DataStore& data) {
         game_->PushState(
             std::make_unique<DialogueState>(data, target_obj->ref_id));
       } else if (target_obj->type == "boss") {
-        int enemy_id = target_obj->ref_id;
-        const auto* enemy_templ = data.GetEnemyTemplate(enemy_id);
-        if (!enemy_templ) {
-          RenderSystem::SetDialogueText("System", {"Unknown boss."});
-          return;
+        if (next_loc_id != -1 && !data.GetInventoryScripts().empty()) {
+          data.GetPlayer().location_id = next_loc_id;
+          auto spawn = data.GetSpawnPoint(next_loc_id);
+          player->SetPosition(spawn.first, spawn.second);
+          int enemy_id = target_obj->ref_id;
+          if (!data.GetEnemyTemplate(enemy_id)) {
+            RenderSystem::SetTemporaryDialogue("System", {"Unknown boss."});
+            return;
+          }
+          game_->PushState(std::make_unique<CombatState>(data, enemy_id,
+                                                         target_obj->symbol));
+        } else {
+          RenderSystem::SetTemporaryDialogue("System",
+                                             {"You have no weapon to fight."});
         }
-        auto enemy_entity = std::make_unique<Entity>(
-            enemy_templ->id, EntityType::kBoss, target_obj->symbol,
-            target_obj->x, target_obj->y);
-        enemy_entity->SetStat(StatType::kHp, enemy_templ->hp);
-        enemy_entity->SetStat(StatType::kMaxHp, enemy_templ->hp);
-        enemy_entity->SetStat(StatType::kDamage, enemy_templ->damage);
-        enemy_entity->SetStat(StatType::kEnemyId, enemy_templ->id);
-        int enemy_idx = data.AddEntity(std::move(enemy_entity));
-        std::vector<int> enemy_indices = {enemy_idx};
-        game_->PushState(std::make_unique<CombatState>(
-            data, enemy_indices, true, loc->next_location_id));
         return;
       } else if (target_obj->type == "exit") {
-        int next_loc_id = loc->next_location_id;
-        if (next_loc_id != -1) {
+        if (next_loc_id != -1 && !data.GetInventoryScripts().empty()) {
           data.GetPlayer().location_id = next_loc_id;
           auto spawn = data.GetSpawnPoint(next_loc_id);
           player->SetPosition(spawn.first, spawn.second);
           const auto* new_loc = data.GetLocationById(next_loc_id);
           if (new_loc && new_loc->forced_combat_on_enter) {
-            const auto& group_entries = data.GetEnemyGroup(next_loc_id);
-            if (group_entries.empty()) {
-              RenderSystem::SetDialogueText("System", {"No enemies defined."});
-              return;
-            }
-            std::vector<int> enemy_indices;
-            for (const auto& entry : group_entries) {
-              int count = entry.min_count;
-              if (entry.max_count > entry.min_count) {
-                count += rand() % (entry.max_count - entry.min_count + 1);
-              }
-              for (int i = 0; i < count; ++i) {
-                const auto* enemy_templ = data.GetEnemyTemplate(entry.enemy_id);
-                if (!enemy_templ) continue;
-                auto enemy_entity = std::make_unique<Entity>(
-                    enemy_templ->id, EntityType::kBoss, '?', spawn.first + i,
-                    spawn.second);
-                enemy_entity->SetStat(StatType::kHp, enemy_templ->hp);
-                enemy_entity->SetStat(StatType::kMaxHp, enemy_templ->hp);
-                enemy_entity->SetStat(StatType::kDamage, enemy_templ->damage);
-                enemy_entity->SetStat(StatType::kEnemyId, enemy_templ->id);
-                enemy_indices.push_back(
-                    data.AddEntity(std::move(enemy_entity)));
-              }
-            }
-            if (!enemy_indices.empty()) {
-              game_->PushState(std::make_unique<CombatState>(
-                  data, enemy_indices, false, -1));
-            }
+            game_->PushState(std::make_unique<CombatState>(data, next_loc_id));
+            return;
           }
         } else {
-          RenderSystem::SetDialogueText("System", {"No exit."});
+          RenderSystem::SetTemporaryDialogue("System", {"No exit."});
         }
+        return;
+      } else if (target_obj->type == "puzzle") {
+        game_->PushState(std::make_unique<PuzzleState>(data, loc_id));
         return;
       }
       return;

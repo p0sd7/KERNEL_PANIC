@@ -9,8 +9,10 @@ namespace kernel {
 
 class CombatState : public BaseState {
  public:
-  CombatState(DataStore& data, const std::vector<int>& enemy_indices,
-              bool is_boss_fight, int location_after_boss = -1);
+  CombatState(DataStore& data, int enemy_id, char symbol);
+
+  CombatState(DataStore& data, int location_id);
+
   void HandleInput(const InputCommand& cmd, DataStore& data) override;
   void Update(float delta, DataStore& data) override;
   void Draw(const DataStore& data) override;
@@ -18,7 +20,6 @@ class CombatState : public BaseState {
  private:
   std::vector<int> enemy_indices_;
   bool is_boss_fight_;
-  int location_after_boss_;
   int last_script_used_id_;
   int player_defense_percent_;
   bool combat_over_;

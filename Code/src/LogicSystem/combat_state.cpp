@@ -7,26 +7,86 @@
 #include "../CombatSystem/combat_engine.h"
 #include "../DataStore/data_store.h"
 #include "../InputSystem/input_handler.h"
+#include "../Logging/logger.h"
 #include "../RenderSystem/console_renderer.h"
 #include "game.h"
 #include "gameover_state.h"
 
 namespace kernel {
 
-CombatState::CombatState(DataStore& data, const std::vector<int>& enemy_indices,
-                         bool is_boss_fight, int location_after_boss)
-    : enemy_indices_(enemy_indices),
-      is_boss_fight_(is_boss_fight),
-      location_after_boss_(location_after_boss),
+CombatState::CombatState(DataStore& data, int enemy_id, char symbol)
+    : is_boss_fight_(true),
       last_script_used_id_(-1),
       player_defense_percent_(0),
       combat_over_(false),
       highlight_enemy_(-1),
       boss_id_(-1),
       spawn_dialogue_shown_(false) {
-  CombatEngine::StartCombat(data, data.GetPlayer().entity_index, enemy_indices_,
-                            boss_id_, boss_name_, spawn_dialogue_shown_);
+  const auto* templ = data.GetEnemyTemplate(enemy_id);
+  if (!templ) {
+    logging::LogError("Unknown enemy id: " + std::to_string(enemy_id));
+    combat_over_ = true;
+    return;
+  }
+
+  auto enemy = std::make_unique<Entity>(templ->id, EntityType::kEnemy, symbol);
+  enemy->SetStat(StatType::kHp, templ->hp);
+  enemy->SetStat(StatType::kMaxHp, templ->hp);
+  enemy->SetStat(StatType::kDamage, templ->damage);
+  enemy->SetStat(StatType::kEnemyId, templ->id);
+  int idx = data.AddEntity(std::move(enemy));
+  enemy_indices_.push_back(idx);
+
+  boss_name_ = templ->name;
+  boss_id_ = enemy_id;
+  if (!templ->dialogue_on_spawn.empty()) {
+    RenderSystem::SetCombatDialogue(boss_name_, {templ->dialogue_on_spawn});
+    spawn_dialogue_shown_ = true;
+  }
   combat_log_ = "";
+}
+
+// Конструктор для группы врагов
+CombatState::CombatState(DataStore& data, int location_id)
+    : is_boss_fight_(false),
+      last_script_used_id_(-1),
+      player_defense_percent_(0),
+      combat_over_(false),
+      highlight_enemy_(-1),
+      boss_id_(-1),
+      spawn_dialogue_shown_(false) {
+  const auto& group_entries = data.GetEnemyGroup(location_id);
+  if (group_entries.empty()) {
+    logging::LogError("No enemies for group at location " +
+                      std::to_string(location_id));
+    combat_over_ = true;
+    return;
+  }
+  for (const auto& entry : group_entries) {
+    int count = entry.min_count;
+    if (entry.max_count > entry.min_count) {
+      count += rand() % (entry.max_count - entry.min_count + 1);
+    }
+    for (int i = 0; i < count; ++i) {
+      const auto* templ = data.GetEnemyTemplate(entry.enemy_id);
+      if (!templ) continue;
+      auto enemy = std::make_unique<Entity>(templ->id, EntityType::kEnemy, '?');
+      enemy->SetStat(StatType::kHp, templ->hp);
+      enemy->SetStat(StatType::kMaxHp, templ->hp);
+      enemy->SetStat(StatType::kDamage, templ->damage);
+      enemy->SetStat(StatType::kEnemyId, templ->id);
+      enemy_indices_.push_back(data.AddEntity(std::move(enemy)));
+    }
+  }
+  if (!enemy_indices_.empty()) {
+    int first_id =
+        data.GetEntity(enemy_indices_[0])->GetStat(StatType::kEnemyId);
+    const auto* templ = data.GetEnemyTemplate(first_id);
+    if (templ && !templ->dialogue_on_spawn.empty()) {
+      RenderSystem::SetCombatDialogue(templ->name, {templ->dialogue_on_spawn});
+      spawn_dialogue_shown_ = true;
+    }
+  }
 }
 
 void CombatState::HandleInput(const InputCommand& cmd, DataStore& data) {
@@ -90,15 +150,9 @@ void CombatState::HandleInput(const InputCommand& cmd, DataStore& data) {
               data.AddScriptToInventory(scr.id);
             }
           }
-          if (location_after_boss_ != -1) {
-            data.GetPlayer().location_id = location_after_boss_;
-            auto spawn = data.GetSpawnPoint(location_after_boss_);
-            Entity* player = data.GetEntity(data.GetPlayer().entity_index);
-            if (player) player->SetPosition(spawn.first, spawn.second);
-          }
           RenderSystem::SetCombatDialogue("", {});
         } else {
-          int heal = 10;
+          int heal = CombatEngine::GetHealReward(enemy_indices_, data);
           Entity* player = data.GetEntity(data.GetPlayer().entity_index);
           if (player) {
             int new_hp = std::min(player->GetStat(StatType::kMaxHp),
@@ -138,12 +192,6 @@ void CombatState::HandleInput(const InputCommand& cmd, DataStore& data) {
                 !data.HasScriptInInventory(scr.id)) {
               data.AddScriptToInventory(scr.id);
             }
-          }
-          if (location_after_boss_ != -1) {
-            data.GetPlayer().location_id = location_after_boss_;
-            auto spawn = data.GetSpawnPoint(location_after_boss_);
-            Entity* player = data.GetEntity(data.GetPlayer().entity_index);
-            if (player) player->SetPosition(spawn.first, spawn.second);
           }
           int heal = CombatEngine::GetHealReward(enemy_indices_, data);
           if (player) {

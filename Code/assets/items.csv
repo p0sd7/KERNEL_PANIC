@@ -15,3 +15,4 @@ id;name;type;effect_value;script_id
 14;memory_frag_3;memory_frag;3;
 15;memory_frag_4;memory_frag;4;
 16;memory_frag_5;memory_frag;5;
+17;trap;trap;10;

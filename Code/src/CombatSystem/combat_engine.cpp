@@ -6,6 +6,7 @@
 
 #include "../DataStore/data_store.h"
 #include "../Entities/entity.h"
+#include "../RenderSystem/console_renderer.h"  // для SetCombatDialogue
 
 namespace kernel {
 namespace CombatEngine {
@@ -20,10 +21,29 @@ static int GetRandom(int min, int max) {
 }
 
 void StartCombat(DataStore& data, int player_idx,
-                 std::vector<int>& enemy_indices) {
-  (void)data;
+                 std::vector<int>& enemy_indices, int& boss_id,
+                 std::string& boss_name, bool& spawn_dialogue_shown) {
   (void)player_idx;
-  (void)enemy_indices;
+  boss_id = -1;
+  boss_name.clear();
+  spawn_dialogue_shown = false;
+
+  if (!enemy_indices.empty()) {
+    int enemy_id =
+        data.GetEntity(enemy_indices[0])->GetStat(StatType::kEnemyId);
+    const auto* templ = data.GetEnemyTemplate(enemy_id);
+    if (templ) {
+      boss_name = templ->name;
+      if (templ->enemy_type == EnemyType::kBoss) {
+        boss_id = enemy_id;
+      }
+      if (!templ->dialogue_on_spawn.empty()) {
+        RenderSystem::SetCombatDialogue(templ->name,
+                                        {templ->dialogue_on_spawn});
+        spawn_dialogue_shown = true;
+      }
+    }
+  }
 }
 
 bool ApplyScript(DataStore& data, int player_idx, int script_id,
@@ -64,7 +84,7 @@ bool ApplyScript(DataStore& data, int player_idx, int script_id,
   }
 
   if (script->stun_target) {
-    // сделать оглушение
+    // заглушка
   }
 
   return true;
@@ -74,7 +94,7 @@ void EnemyTurn(DataStore& data, int player_idx, std::vector<int>& enemy_indices,
                int player_defense_percent, std::string& log) {
   Entity* player = data.GetEntity(player_idx);
   if (!player) return;
-
+  log.clear();
   for (int idx : enemy_indices) {
     Entity* enemy = data.GetEntity(idx);
     if (!enemy || enemy->GetStat(StatType::kHp) <= 0) continue;
@@ -85,6 +105,7 @@ void EnemyTurn(DataStore& data, int player_idx, std::vector<int>& enemy_indices,
     }
     int new_hp = player->GetStat(StatType::kHp) - damage;
     player->SetStat(StatType::kHp, std::max(0, new_hp));
+    int enemy_id = enemy->GetStat(StatType::kEnemyId);
   }
 }
 
@@ -109,9 +130,16 @@ int GetTotalEnemyHp(const std::vector<int>& enemy_indices,
 
 int GetHealReward(const std::vector<int>& enemy_indices,
                   const DataStore& data) {
-  (void)enemy_indices;
-  (void)data;
-  return 0;
+  for (int idx : enemy_indices) {
+    const Entity* enemy = data.GetEntity(idx);
+    if (!enemy) continue;
+    int enemy_id = enemy->GetStat(StatType::kEnemyId);
+    const auto* templ = data.GetEnemyTemplate(enemy_id);
+    if (templ && templ->enemy_type == EnemyType::kBoss) {
+      return 30;
+    }
+  }
+  return 5;
 }
 
 }  // namespace CombatEngine

@@ -24,20 +24,8 @@ CombatState::CombatState(DataStore& data, const std::vector<int>& enemy_indices,
       highlight_enemy_(-1),
       boss_id_(-1),
       spawn_dialogue_shown_(false) {
-  if (!enemy_indices_.empty()) {
-    int enemy_id =
-        data.GetEntity(enemy_indices_[0])->GetStat(StatType::kEnemyId);
-    const auto* templ = data.GetEnemyTemplate(enemy_id);
-    if (templ) {
-      boss_name_ = templ->name;
-      if (is_boss_fight_) boss_id_ = enemy_id;
-      if (!templ->dialogue_on_spawn.empty()) {
-        RenderSystem::SetCombatDialogue(templ->name,
-                                        {templ->dialogue_on_spawn});
-        spawn_dialogue_shown_ = true;
-      }
-    }
-  }
+  CombatEngine::StartCombat(data, data.GetPlayer().entity_index, enemy_indices_,
+                            boss_id_, boss_name_, spawn_dialogue_shown_);
   combat_log_ = "";
 }
 
@@ -70,13 +58,9 @@ void CombatState::HandleInput(const InputCommand& cmd, DataStore& data) {
         goto enemy_turn;
       }
     }
-
     {
       int script_id = data.GetScriptIdByName(script_name);
       if (script_id == -1) {
-        goto enemy_turn;
-      }
-      if (!data.HasScriptInInventory(script_id)) {
         goto enemy_turn;
       }
 
@@ -88,14 +72,6 @@ void CombatState::HandleInput(const InputCommand& cmd, DataStore& data) {
       if (!success) {
         goto enemy_turn;
       }
-
-      if (!enemy_indices_.empty()) {
-        int enemy_id = data.GetEntity(enemy_indices_[target_index])
-                           ->GetStat(StatType::kEnemyId);
-        const auto* templ = data.GetEnemyTemplate(enemy_id);
-        std::string enemy_name = templ ? templ->name : "Enemy";
-      }
-
       highlight_enemy_ = target_index;
       RenderSystem::DrawCombat(data, data.GetPlayer().entity_index,
                                enemy_indices_, "", highlight_enemy_,
@@ -122,6 +98,13 @@ void CombatState::HandleInput(const InputCommand& cmd, DataStore& data) {
           }
           RenderSystem::SetCombatDialogue("", {});
         } else {
+          int heal = 10;
+          Entity* player = data.GetEntity(data.GetPlayer().entity_index);
+          if (player) {
+            int new_hp = std::min(player->GetStat(StatType::kMaxHp),
+                                  player->GetStat(StatType::kHp) + heal);
+            player->SetStat(StatType::kHp, new_hp);
+          }
           RenderSystem::SetCombatDialogue("", {});
         }
         for (int idx : enemy_indices_) data.RemoveEntity(idx);
@@ -162,6 +145,12 @@ void CombatState::HandleInput(const InputCommand& cmd, DataStore& data) {
             Entity* player = data.GetEntity(data.GetPlayer().entity_index);
             if (player) player->SetPosition(spawn.first, spawn.second);
           }
+          int heal = CombatEngine::GetHealReward(enemy_indices_, data);
+          if (player) {
+            int new_hp = std::min(player->GetStat(StatType::kMaxHp),
+                                  player->GetStat(StatType::kHp) + heal);
+            player->SetStat(StatType::kHp, new_hp);
+          }
           RenderSystem::SetCombatDialogue("", {});
         } else {
           RenderSystem::SetCombatDialogue("", {});
@@ -173,41 +162,35 @@ void CombatState::HandleInput(const InputCommand& cmd, DataStore& data) {
     }
     return;
 
-  enemy_turn:
-    // Пропуск хода игрока (неправильная команда) – только ход врагов
-    {
-      std::string enemy_log;
-      CombatEngine::EnemyTurn(data, data.GetPlayer().entity_index,
-                              enemy_indices_, player_defense_percent_,
-                              enemy_log);
-      player_defense_percent_ = 0;
-      if (!enemy_log.empty()) {
-        RenderSystem::SetCombatDialogue("Enemy", {enemy_log});
-      }
-
-      Entity* player = data.GetEntity(data.GetPlayer().entity_index);
-      if (player && player->GetStat(StatType::kHp) <= 0) {
-        combat_over_ = true;
-        game_->ChangeState(std::make_unique<GameOverState>());
-        return;
-      }
-
-      if (CombatEngine::IsCombatOver(enemy_indices_, data)) {
-        combat_over_ = true;
-        // Награда для случайных врагов (если победили после пропуска)
-        if (!is_boss_fight_) {
-          int heal = 10;
-          Entity* player = data.GetEntity(data.GetPlayer().entity_index);
-          if (player) {
-            int new_hp = std::min(player->GetStat(StatType::kMaxHp),
-                                  player->GetStat(StatType::kHp) + heal);
-            player->SetStat(StatType::kHp, new_hp);
-          }
-        }
-        for (int idx : enemy_indices_) data.RemoveEntity(idx);
-        game_->PopState();
-      }
+  enemy_turn: {
+    std::string enemy_log;
+    CombatEngine::EnemyTurn(data, data.GetPlayer().entity_index, enemy_indices_,
+                            player_defense_percent_, enemy_log);
+    player_defense_percent_ = 0;
+    if (!enemy_log.empty()) {
+      RenderSystem::SetCombatDialogue("Enemy", {enemy_log});
     }
+
+    Entity* player = data.GetEntity(data.GetPlayer().entity_index);
+    if (player && player->GetStat(StatType::kHp) <= 0) {
+      combat_over_ = true;
+      game_->ChangeState(std::make_unique<GameOverState>());
+      return;
+    }
+
+    if (CombatEngine::IsCombatOver(enemy_indices_, data)) {
+      combat_over_ = true;
+      int heal = CombatEngine::GetHealReward(enemy_indices_, data);
+      Entity* player = data.GetEntity(data.GetPlayer().entity_index);
+      if (player) {
+        int new_hp = std::min(player->GetStat(StatType::kMaxHp),
+                              player->GetStat(StatType::kHp) + heal);
+        player->SetStat(StatType::kHp, new_hp);
+      }
+      for (int idx : enemy_indices_) data.RemoveEntity(idx);
+      game_->PopState();
+    }
+  }
   }
 }
 

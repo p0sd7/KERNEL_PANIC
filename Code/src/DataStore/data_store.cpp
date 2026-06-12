@@ -225,11 +225,11 @@ void DataStore::RemoveMapObject(int location_id, int object_id) {
 }
 
 void DataStore::AddScriptToInventory(int script_id) {
-  player_.inventory_script_ids.push_back(script_id);
+  player_.inventory_items.push_back(script_id);
 }
 
 bool DataStore::HasScriptInInventory(int script_id) const {
-  for (int id : player_.inventory_script_ids)
+  for (int id : player_.inventory_items)
     if (id == script_id) return true;
   return false;
 }
@@ -241,7 +241,7 @@ void DataStore::SetMemoryPercent(int percent) {
 void DataStore::IncrementFragments() { ++player_.fragments_collected; }
 
 void DataStore::ResetPlayerForNewCycle() {
-  player_.inventory_script_ids.clear();
+  player_.inventory_items.clear();
   player_.memory_percent = 0;
   player_.fragments_collected = 0;
   int ash_id = GetLocationIdByName("/ash");

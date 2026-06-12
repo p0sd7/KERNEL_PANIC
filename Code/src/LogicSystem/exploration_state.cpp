@@ -108,7 +108,6 @@ void ExplorationState::HandleInput(const InputCommand& cmd, DataStore& data) {
           data.GetPlayer().location_id = next_loc_id;
           auto spawn = data.GetSpawnPoint(next_loc_id);
           player->SetPosition(spawn.first, spawn.second);
-          // Принудительный бой при входе в локацию
           const auto* new_loc = data.GetLocationById(next_loc_id);
           if (new_loc && new_loc->forced_combat_on_enter) {
             const auto& group_entries = data.GetEnemyGroup(next_loc_id);

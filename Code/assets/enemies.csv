@@ -1,7 +1,7 @@
 id;name;ascii_display;hp;damage;enemy_type;special_ai;dialogue_on_spawn
-201;watcher.eze;WATCHER;50;10;boss;none;ты снова здесь
-202;rack.eze;RACK;70;15;boss;block_random_script;помнишь их голоса?
-203;liar.eze;LIAR;80;0;boss;copy_last_script;посмотри на меня
-204;minor;MINOR;12;4;random;none;
+201;watcher.eze;backgrounds/watcher.txt;50;10;boss;none;ты снова здесь
+202;rack.eze;backgrounds/rack.txt;70;15;boss;block_random_script;помнишь их голоса?
+203;liar.eze;backgrounds/liar.txt;80;0;boss;copy_last_script;посмотри на меня
+204;minor;MINOR;12;4;random;none;"you=deadman;"
 205;vmail;VMAIL;15;6;random;pretend_harmless;письмо для тебя...
 206;smlinj;SMLINJ;18;7;random;block_every_2_turns;запрос выполнен...

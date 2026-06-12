@@ -69,6 +69,25 @@ void DataStore::LoadAll(const std::string& assets_path) {
   if (!csv_loader::LoadEnemies(enemies_path, enemy_templates_))
     logging::LogError("Failed to load " + enemies_path);
 
+  for (const auto& [id, enemy] : enemy_templates_) {
+    if (enemy.enemy_type == EnemyType::kBoss && !enemy.ascii_display.empty()) {
+      std::string art_path = base + enemy.ascii_display;
+      std::ifstream file(art_path);
+      if (!file.is_open()) {
+        logging::LogError("Cannot open boss art file: " + art_path);
+        continue;
+      }
+      std::vector<std::string> lines;
+      std::string line;
+      while (std::getline(file, line)) {
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+        lines.push_back(line);
+      }
+      boss_arts_[id] = std::move(lines);
+      logging::LogInfo("Loaded boss art for " + enemy.name);
+    }
+  }
+
   std::string groups_path = base + "enemy_groups.csv";
   if (!csv_loader::LoadEnemyGroups(groups_path, enemy_groups_))
     logging::LogError("Failed to load " + groups_path);
@@ -93,6 +112,12 @@ void DataStore::LoadAll(const std::string& assets_path) {
       }
     }
   }
+}
+
+const std::vector<std::string>& DataStore::GetBossArt(int enemy_id) const {
+  static const std::vector<std::string> empty;
+  auto it = boss_arts_.find(enemy_id);
+  return (it != boss_arts_.end()) ? it->second : empty;
 }
 
 int DataStore::AddEntity(std::unique_ptr<Entity> entity) {

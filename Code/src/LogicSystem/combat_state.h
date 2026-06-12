@@ -10,7 +10,7 @@ namespace kernel {
 class CombatState : public BaseState {
  public:
   CombatState(DataStore& data, const std::vector<int>& enemy_indices,
-              bool is_boss_fight);
+              bool is_boss_fight, int location_after_boss = -1);
   void HandleInput(const InputCommand& cmd, DataStore& data) override;
   void Update(float delta, DataStore& data) override;
   void Draw(const DataStore& data) override;
@@ -18,11 +18,15 @@ class CombatState : public BaseState {
  private:
   std::vector<int> enemy_indices_;
   bool is_boss_fight_;
-  std::string combat_log_;
+  int location_after_boss_;
   int last_script_used_id_;
   int player_defense_percent_;
   bool combat_over_;
   int highlight_enemy_;
+  int boss_id_;
+  std::string boss_name_;
+  std::string combat_log_;
+  bool spawn_dialogue_shown_;
 };
 
 }  // namespace kernel

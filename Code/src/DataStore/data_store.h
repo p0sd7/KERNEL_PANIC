@@ -177,6 +177,9 @@ class DataStore {
     return interface_config_;
   }
 
+  const std::vector<std::string>& GetBossArt(int enemy_id) const;
+  const std::map<int, ScriptData>& GetScripts() const { return scripts_; }
+
  private:
   std::vector<std::unique_ptr<Entity>> entities_;
   PlayerState player_;
@@ -192,6 +195,7 @@ class DataStore {
   std::map<int, MemoryFragmentData> memory_fragments_;
   std::map<int, PuzzleData> puzzles_;
   std::map<int, std::vector<EnemyGroup>> enemy_groups_;
+  std::map<int, std::vector<std::string>> boss_arts_;
 
   InterfaceConfig interface_config_;
 };

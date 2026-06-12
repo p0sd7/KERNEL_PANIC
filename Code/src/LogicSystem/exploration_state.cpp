@@ -99,8 +99,8 @@ void ExplorationState::HandleInput(const InputCommand& cmd, DataStore& data) {
         enemy_entity->SetStat(StatType::kEnemyId, enemy_templ->id);
         int enemy_idx = data.AddEntity(std::move(enemy_entity));
         std::vector<int> enemy_indices = {enemy_idx};
-        game_->PushState(
-            std::make_unique<CombatState>(data, enemy_indices, true));
+        game_->PushState(std::make_unique<CombatState>(
+            data, enemy_indices, true, loc->next_location_id));
         return;
       } else if (target_obj->type == "exit") {
         int next_loc_id = loc->next_location_id;
@@ -137,8 +137,8 @@ void ExplorationState::HandleInput(const InputCommand& cmd, DataStore& data) {
               }
             }
             if (!enemy_indices.empty()) {
-              game_->PushState(
-                  std::make_unique<CombatState>(data, enemy_indices, false));
+              game_->PushState(std::make_unique<CombatState>(
+                  data, enemy_indices, false, -1));
             }
           }
         } else {

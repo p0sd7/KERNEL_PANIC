@@ -9,7 +9,6 @@ find_package(Curses REQUIRED)
 set(SOURCES
     src/main.cpp
     src/CombatSystem/combat_engine.cpp
-    src/CombatSystem/script_executor.cpp
     src/Entities/entity.cpp
     src/InputSystem/input_handler.cpp
     src/LogicSystem/combat_state.cpp

@@ -4,6 +4,7 @@
 
 #include <ncurses.h>
 
+#include <clocale>
 #include <string>
 #include <vector>
 
@@ -32,7 +33,11 @@ static int input_x_ = 0;
 static std::vector<std::string> g_dialog_lines = {"..."};
 static std::string g_dialog_target = "Silence";
 
+static std::vector<std::string> g_combat_dialog_lines;
+static std::string g_combat_dialog_target;
+
 void Init(const InterfaceConfig& config) {
+  setlocale(LC_ALL, "");
   screen_width_ = config.screen_width;
   screen_height_ = config.screen_height;
   map_width_ = config.map_width;
@@ -81,6 +86,12 @@ void SetDialogueText(const std::string& target,
                      const std::vector<std::string>& lines) {
   g_dialog_target = target;
   g_dialog_lines = lines;
+}
+
+void SetCombatDialogue(const std::string& target,
+                       const std::vector<std::string>& lines) {
+  g_combat_dialog_target = target;
+  g_combat_dialog_lines = lines;
 }
 
 void DrawExploration(const DataStore& data, int player_idx) {
@@ -132,8 +143,9 @@ void DrawInventory(const DataStore& data, int player_idx) {
 }
 
 void DrawCombat(const DataStore& data, int player_idx,
-                const std::vector<int>& enemy_indices, const std::string& log,
-                int highlight_enemy) {
+                const std::vector<int>& enemy_indices,
+                const std::string& /*log*/, int highlight_enemy,
+                bool is_boss_fight, int boss_id) {
   clear();
 
   const Entity* player = data.GetEntity(player_idx);
@@ -144,25 +156,50 @@ void DrawCombat(const DataStore& data, int player_idx,
 
   int start_y = 3;
   int start_x = 2;
-  mvprintw(start_y, start_x, "Enemies:");
-  for (size_t i = 0; i < enemy_indices.size(); ++i) {
-    int idx = enemy_indices[i];
-    const Entity* enemy = data.GetEntity(idx);
-    if (!enemy) continue;
-    int enemy_id = enemy->GetStat(StatType::kEnemyId);
-    const auto* enemy_templ = data.GetEnemyTemplate(enemy_id);
-    std::string name = enemy_templ ? enemy_templ->name : "Unknown";
-    int hp_curr = enemy->GetStat(StatType::kHp);
-    int hp_max = enemy->GetStat(StatType::kMaxHp);
-    int percent = (hp_max > 0) ? (hp_curr * 100) / hp_max : 0;
-    // Подсветка выбранного врага
-    if (static_cast<int>(i) == highlight_enemy) {
-      attron(A_REVERSE);
+
+  if (is_boss_fight && boss_id != -1) {
+    const auto& art = data.GetBossArt(boss_id);
+    for (size_t i = 0; i < art.size() && start_y + i < screen_height_ - 6;
+         ++i) {
+      mvprintw(start_y + i, start_x, "%s", art[i].c_str());
     }
-    mvprintw(start_y + 1, start_x + i * 20, "[%d] %s %d%%", i + 1, name.c_str(),
-             percent);
-    if (static_cast<int>(i) == highlight_enemy) {
-      attroff(A_REVERSE);
+    if (!enemy_indices.empty()) {
+      const Entity* boss = data.GetEntity(enemy_indices[0]);
+      if (boss) {
+        int hp_curr = boss->GetStat(StatType::kHp);
+        int hp_max = boss->GetStat(StatType::kMaxHp);
+        int percent = (hp_max > 0) ? (hp_curr * 100) / hp_max : 0;
+        mvprintw(start_y + art.size() + 1, start_x, "BOSS HP: %d%%", percent);
+      }
+    }
+  } else {
+    mvprintw(start_y, start_x, "Enemies:");
+    for (size_t i = 0; i < enemy_indices.size(); ++i) {
+      int idx = enemy_indices[i];
+      const Entity* enemy = data.GetEntity(idx);
+      if (!enemy) continue;
+      int enemy_id = enemy->GetStat(StatType::kEnemyId);
+      const auto* templ = data.GetEnemyTemplate(enemy_id);
+      std::string name = templ ? templ->name : "Unknown";
+      int hp_curr = enemy->GetStat(StatType::kHp);
+      int hp_max = enemy->GetStat(StatType::kMaxHp);
+      int percent = (hp_max > 0) ? (hp_curr * 100) / hp_max : 0;
+      if (static_cast<int>(i) == highlight_enemy) attron(A_REVERSE);
+      mvprintw(start_y + 1, start_x + i * 20, "[%d] %s %d%%", i + 1,
+               name.c_str(), percent);
+      if (static_cast<int>(i) == highlight_enemy) attroff(A_REVERSE);
+    }
+  }
+  int combat_dialog_y = screen_height_ - 8;
+  int dialog_width = screen_width_ - 4;
+  if (combat_dialog_y > 0 && !g_combat_dialog_lines.empty()) {
+    for (int i = 0; i < dialog_width; ++i) mvaddch(combat_dialog_y, i, '=');
+    mvprintw(combat_dialog_y + 1, 2, "%s", g_combat_dialog_target.c_str());
+    for (int i = 0; i < dialog_width; ++i) mvaddch(combat_dialog_y + 2, i, '=');
+    int line_y = combat_dialog_y + 3;
+    for (const auto& line : g_combat_dialog_lines) {
+      if (line_y >= screen_height_ - 4) break;
+      mvprintw(line_y++, 2, "%s", line.c_str());
     }
   }
 

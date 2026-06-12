@@ -25,7 +25,7 @@ enum class StatType {
   kNpcId,
   kEnemyId,
   kTrapDamage,
-  kCount  // Must be last.
+  kCount  // Must be last
 };
 
 class Entity : public Renderable {
@@ -40,8 +40,10 @@ class Entity : public Renderable {
     y_ = y;
   }
 
-  int GetStat(StatType type) const;
-  void SetStat(StatType type, int value);
+  int GetStat(StatType type) const { return stats_[static_cast<size_t>(type)]; }
+  void SetStat(StatType type, int value) {
+    stats_[static_cast<size_t>(type)] = value;
+  }
 
   EntityType GetType() const { return type_; }
   int GetId() const { return id_; }

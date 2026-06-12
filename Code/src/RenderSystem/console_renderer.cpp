@@ -62,11 +62,11 @@ void DrawLocationName(const std::string& name) {
 }
 
 void DrawTopBar(int hp, int max_hp, int memory) {
-  mvprintw(0, 0, "HP: %3d/%3d [", hp, max_hp);
+  mvprintw(0, 0, "HP: %3d%% [", hp, max_hp);
   int hp_filled = (hp * bar_width_) / max_hp;
   for (int i = 0; i < bar_width_; ++i) addch(i < hp_filled ? '#' : '-');
   printw("]");
-  mvprintw(1, 0, "MEM: %3d%% [", memory);
+  mvprintw(1, 0, "ME: %3d%% [", memory);
   int mem_filled = (memory * bar_width_) / 100;
   for (int i = 0; i < bar_width_; ++i) addch(i < mem_filled ? '#' : '-');
   printw("]");
@@ -79,7 +79,7 @@ void SetDialogueText(const std::string& target,
 }
 
 void DrawExploration(const DataStore& data, int player_idx) {
-  int loc_id = data.GetPlayerLocationId();
+  int loc_id = data.GetPlayer().location_id;
   const auto* location = data.GetLocationById(loc_id);
   std::string loc_name = location ? location->name : "unknown";
   DrawLocationName(loc_name);

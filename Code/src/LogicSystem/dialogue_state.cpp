@@ -28,10 +28,7 @@ void DialogueState::HandleInput(const InputCommand& cmd, DataStore& /*data*/) {
     if (game_) game_->Quit();
     return;
   }
-  // Игнорируем команды движения и текстового ввода – только подтверждение
-  // (любая клавиша, кроме None)
   if (cmd.type == InputType::kNone) return;
-  // Теперь любое другое нажатие (kConfirm, kMove, kTextInput) пролистывает
   if (current_line_index_ + 1 < lines_.size()) {
     ++current_line_index_;
     RenderSystem::SetDialogueText(npc_name_,
@@ -46,7 +43,7 @@ void DialogueState::HandleInput(const InputCommand& cmd, DataStore& /*data*/) {
 void DialogueState::Update(float /*delta*/, DataStore& /*data*/) {}
 
 void DialogueState::Draw(const DataStore& data) {
-  int player_idx = data.GetPlayerIndex();
+  int player_idx = data.GetPlayer().entity_index;
   RenderSystem::DrawExploration(data, player_idx);
 }
 

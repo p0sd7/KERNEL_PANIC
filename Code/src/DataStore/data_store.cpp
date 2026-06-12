@@ -193,30 +193,32 @@ void DataStore::RemoveMapObject(int location_id, int object_id) {
 }
 
 void DataStore::AddScriptToInventory(int script_id) {
-  inventory_script_ids_.push_back(script_id);
+  player_.inventory_script_ids.push_back(script_id);
 }
 
 bool DataStore::HasScriptInInventory(int script_id) const {
-  for (int id : inventory_script_ids_)
+  for (int id : player_.inventory_script_ids)
     if (id == script_id) return true;
   return false;
 }
 
-void DataStore::SetMemoryPercent(int percent) { memory_percent_ = percent; }
+void DataStore::SetMemoryPercent(int percent) {
+  player_.memory_percent = percent;
+}
 
-void DataStore::IncrementFragments() { ++fragments_collected_; }
+void DataStore::IncrementFragments() { ++player_.fragments_collected; }
 
 void DataStore::ResetPlayerForNewCycle() {
-  inventory_script_ids_.clear();
-  memory_percent_ = 0;
-  fragments_collected_ = 0;
+  player_.inventory_script_ids.clear();
+  player_.memory_percent = 0;
+  player_.fragments_collected = 0;
   int ash_id = GetLocationIdByName("/ash");
   if (ash_id == -1) ash_id = 1;
-  player_location_id_ = ash_id;
-  Entity* player = GetEntity(player_index_);
+  player_.location_id = ash_id;
+  Entity* player = GetEntity(player_.entity_index);
   if (player) {
     player->SetStat(StatType::kHp, player->GetStat(StatType::kMaxHp));
-    auto spawn = GetSpawnPoint(player_location_id_);
+    auto spawn = GetSpawnPoint(player_.location_id);
     player->SetPosition(spawn.first, spawn.second);
   }
 }

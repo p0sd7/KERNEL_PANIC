@@ -12,14 +12,14 @@ ExplorationState::ExplorationState() = default;
 
 void ExplorationState::HandleInput(const InputCommand& cmd, DataStore& data) {
   if (cmd.type == InputType::kMove) {
-    int player_idx = data.GetPlayerIndex();
+    int player_idx = data.GetPlayer().entity_index;
     Entity* player = data.GetEntity(player_idx);
     if (!player) return;
 
     int new_x = player->Position().x + cmd.dx;
     int new_y = player->Position().y + cmd.dy;
 
-    int loc_id = data.GetPlayerLocationId();
+    int loc_id = data.GetPlayer().location_id;
     const auto* loc = data.GetLocationById(loc_id);
     const auto& objects = data.GetMapObjects(loc_id);
 
@@ -84,7 +84,7 @@ void ExplorationState::HandleInput(const InputCommand& cmd, DataStore& data) {
       } else if (target_obj->type == "exit") {
         int next_loc_id = loc->next_location_id;
         if (next_loc_id != -1) {
-          data.SetPlayerLocationId(next_loc_id);
+          data.GetPlayer().location_id = next_loc_id;
           auto spawn = data.GetSpawnPoint(next_loc_id);
           player->SetPosition(spawn.first, spawn.second);
         } else {
@@ -106,7 +106,7 @@ void ExplorationState::HandleInput(const InputCommand& cmd, DataStore& data) {
 void ExplorationState::Update(float /*delta*/, DataStore& /*data*/) {}
 
 void ExplorationState::Draw(const DataStore& data) {
-  int player_idx = data.GetPlayerIndex();
+  int player_idx = data.GetPlayer().entity_index;
   RenderSystem::DrawExploration(data, player_idx);
 }
 

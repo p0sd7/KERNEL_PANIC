@@ -19,10 +19,11 @@ void Game::Run() {
   player->SetStat(StatType::kHp, 100);
   player->SetStat(StatType::kMaxHp, 100);
   int player_idx = data_.AddEntity(std::move(player));
-  data_.SetPlayerIndex(player_idx);
-  data_.SetPlayerLocationId(start_loc_id);
+  data_.GetPlayer().entity_index = player_idx;
+  data_.GetPlayer().location_id = start_loc_id;
   const auto& interface_config = data_.GetInterfaceConfig();
   RenderSystem::Init(interface_config);
+  RenderSystem::SetDialogueText("Silence", {"..."});
   ChangeState(std::make_unique<ExplorationState>());
 
   while (running_) {

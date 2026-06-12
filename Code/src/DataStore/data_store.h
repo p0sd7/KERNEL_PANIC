@@ -115,6 +115,14 @@ struct BackgroundData {
   std::vector<std::string> lines;
 };
 
+struct PlayerState {
+  int entity_index = -1;
+  int memory_percent = 0;
+  std::vector<int> inventory_script_ids;
+  int fragments_collected = 0;
+  int location_id = -1;
+};
+
 class DataStore {
  public:
   void LoadAll(const std::string& assets_path);
@@ -141,20 +149,18 @@ class DataStore {
 
   void RemoveMapObject(int location_id, int object_id);
 
-  void SetPlayerIndex(int idx) { player_index_ = idx; }
-  int GetPlayerIndex() const { return player_index_; }
-  int GetPlayerLocationId() const { return player_location_id_; }
-  void SetPlayerLocationId(int id) { player_location_id_ = id; }
+  PlayerState& GetPlayer() { return player_; }
+  const PlayerState& GetPlayer() const { return player_; }
 
   void AddScriptToInventory(int script_id);
   bool HasScriptInInventory(int script_id) const;
   const std::vector<int>& GetInventoryScripts() const {
-    return inventory_script_ids_;
+    return player_.inventory_script_ids;
   }
   void SetMemoryPercent(int percent);
-  int GetMemoryPercent() const { return memory_percent_; }
+  int GetMemoryPercent() const { return player_.memory_percent; }
   void IncrementFragments();
-  int GetFragments() const { return fragments_collected_; }
+  int GetFragments() const { return player_.fragments_collected; }
   void ResetPlayerForNewCycle();
 
   const std::string& GetNpcName(int npc_id) const;
@@ -165,8 +171,7 @@ class DataStore {
 
  private:
   std::vector<std::unique_ptr<Entity>> entities_;
-  int player_index_ = -1;
-  int player_location_id_ = -1;
+  PlayerState player_;
 
   std::map<int, LocationData> locations_;
   std::map<int, std::vector<MapObjectData>> map_objects_;
@@ -179,10 +184,6 @@ class DataStore {
   std::map<int, std::vector<int>> enemy_groups_;
   std::map<int, MemoryFragmentData> memory_fragments_;
   std::map<int, PuzzleData> puzzles_;
-
-  std::vector<int> inventory_script_ids_;
-  int memory_percent_ = 0;
-  int fragments_collected_ = 0;
 
   InterfaceConfig interface_config_;
 };

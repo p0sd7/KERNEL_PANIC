@@ -14,6 +14,7 @@ namespace RenderSystem {
 
 void Init(const InterfaceConfig& config);
 void Shutdown();
+
 void Clear();
 void DrawExploration(const DataStore& data, int player_idx);
 void DrawInventory(const DataStore& data, int player_idx);
@@ -38,6 +39,9 @@ void SetTemporaryDialogue(const std::string& target,
 void GetInputPosition(int& y, int& x);
 void SetCursorPosition(int y, int x);
 void FlushInput();
+void LoadHelpText(const std::string& path);
+void ToggleHelp();
+bool IsHelpVisible();
 
 }  // namespace RenderSystem
 }  // namespace kernel

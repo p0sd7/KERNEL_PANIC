@@ -1,0 +1,8 @@
+=== SCRIPT SERVICE BASE ===
+
+disintegrate,vh    - deals small damage
+manage_control,vh  - reduces incoming damage by 10% for one turn
+shatter,vh         - deals mid damage
+burn,vh            - deals mid damage, a little loses HP
+blind,vh           - stuns one enemy for 2 turns
+not_malware,vh     - reduces incoming damage by 40% for one turn

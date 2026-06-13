@@ -4,13 +4,7 @@
 
 namespace kernel {
 
-enum class InputType {
-  kNone,
-  kMove,
-  kTextInput,
-  kConfirm,
-  kQuit,
-};
+enum class InputType { kNone, kMove, kTextInput, kConfirm, kQuit, kHelp };
 
 struct InputCommand {
   InputType type = InputType::kQuit;

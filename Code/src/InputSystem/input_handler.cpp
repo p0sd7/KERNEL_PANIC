@@ -37,6 +37,10 @@ InputCommand PollEvents() {
     case 'Q':
       cmd = {InputType::kQuit};
       break;
+    case 'h':
+    case 'H':
+      cmd = {InputType::kHelp};
+      break;
     default:
       cmd = {InputType::kNone};
       break;

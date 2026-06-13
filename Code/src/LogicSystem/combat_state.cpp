@@ -9,6 +9,7 @@
 #include "../InputSystem/input_handler.h"
 #include "../Logging/logger.h"
 #include "../RenderSystem/console_renderer.h"
+#include "final_state.h"
 #include "game.h"
 #include "gameover_state.h"
 
@@ -46,7 +47,6 @@ CombatState::CombatState(DataStore& data, int enemy_id, char symbol)
   combat_log_ = "";
 }
 
-// Конструктор для группы врагов
 CombatState::CombatState(DataStore& data, int location_id)
     : is_boss_fight_(false),
       last_script_used_id_(-1),
@@ -91,6 +91,7 @@ CombatState::CombatState(DataStore& data, int location_id)
 
 void CombatState::HandleInput(const InputCommand& cmd, DataStore& data) {
   if (combat_over_) return;
+
   if (cmd.type == InputType::kQuit) {
     if (game_) game_->Quit();
     return;
@@ -162,7 +163,11 @@ void CombatState::HandleInput(const InputCommand& cmd, DataStore& data) {
           RenderSystem::SetCombatDialogue("", {});
         }
         for (int idx : enemy_indices_) data.RemoveEntity(idx);
-        game_->PopState();
+        if (data.GetPlayer().location_id != 8) {
+          game_->PopState();
+        } else {
+          game_->ChangeState(std::make_unique<FinalState>());
+        }
         return;
       }
     }
@@ -204,7 +209,11 @@ void CombatState::HandleInput(const InputCommand& cmd, DataStore& data) {
           RenderSystem::SetCombatDialogue("", {});
         }
         for (int idx : enemy_indices_) data.RemoveEntity(idx);
-        game_->PopState();
+        if (data.GetPlayer().location_id != 8) {
+          game_->PopState();
+        } else {
+          game_->ChangeState(std::make_unique<FinalState>());
+        }
         return;
       }
     }
@@ -236,7 +245,11 @@ void CombatState::HandleInput(const InputCommand& cmd, DataStore& data) {
         player->SetStat(StatType::kHp, new_hp);
       }
       for (int idx : enemy_indices_) data.RemoveEntity(idx);
-      game_->PopState();
+      if (data.GetPlayer().location_id != 8) {
+        game_->PopState();
+      } else {
+        game_->ChangeState(std::make_unique<FinalState>());
+      }
     }
   }
   }

@@ -1,11 +1,10 @@
-// Copyright 2026, KERNEL_PANIC. All rights reserved.
-
 #include "console_renderer.h"
 
 #include <ncurses.h>
 
 #include <chrono>
 #include <clocale>
+#include <fstream>
 #include <string>
 #include <vector>
 
@@ -34,6 +33,9 @@ static int input_x_ = 0;
 static std::chrono::steady_clock::time_point g_dialog_timer_start;
 static bool g_dialog_timer_active = false;
 static int g_dialog_timer_seconds = 5;
+
+static std::vector<std::string> g_help_lines;
+static bool g_help_visible = false;
 
 static std::vector<std::string> g_dialog_lines = {"..."};
 static std::string g_dialog_target = "Silence";
@@ -69,6 +71,34 @@ void Shutdown() { endwin(); }
 void FlushInput() { flushinp(); }
 
 void Clear() { ::clear(); }
+
+void DrawHelpScreen() {
+  clear();
+  int y = 2;
+  for (const auto& line : g_help_lines) {
+    if (y >= screen_height_ - 2) break;
+    mvprintw(y++, 2, "%s", line.c_str());
+  }
+  mvprintw(screen_height_ - 2, 2, "Press H again to close help.");
+}
+
+void LoadHelpText(const std::string& path) {
+  std::ifstream file(path);
+  g_help_lines.clear();
+  if (!file.is_open()) {
+    g_help_lines.push_back("Help file not found.");
+    return;
+  }
+  std::string line;
+  while (std::getline(file, line)) {
+    if (!line.empty() && line.back() == '\r') line.pop_back();
+    g_help_lines.push_back(line);
+  }
+}
+
+void ToggleHelp() { g_help_visible = !g_help_visible; }
+
+bool IsHelpVisible() { return g_help_visible; }
 
 void DrawLocationName(const std::string& name) {
   int x = map_offset_x_ + map_width_ + 2;
@@ -112,6 +142,12 @@ void DrawExploration(const DataStore& data, int player_idx) {
   int loc_id = data.GetPlayer().location_id;
   const auto* location = data.GetLocationById(loc_id);
   std::string loc_name = location ? location->name : "unknown";
+
+  if (g_help_visible) {
+    DrawHelpScreen();
+    Present();
+    return;
+  }
   DrawLocationName(loc_name);
   if (!location) return;
 
@@ -267,13 +303,13 @@ void DrawFinal(const std::string& prompt) {
 
 void Present() { refresh(); }
 
-void GetInputPosition(int& y, int& x) {
-  y = screen_height_ - 3;
-  x = 4;
+void GetInputPosition(int& x, int& y) {
+  x = screen_height_ - 3;
+  y = 4;
 }
 
-void SetCursorPosition(int y, int x) {
-  move(y, x);
+void SetCursorPosition(int x, int y) {
+  move(x, y);
   refresh();
 }
 

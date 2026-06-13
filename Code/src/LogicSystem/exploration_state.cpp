@@ -8,6 +8,7 @@
 #include "../RenderSystem/console_renderer.h"
 #include "combat_state.h"
 #include "dialogue_state.h"
+#include "final_state.h"
 #include "game.h"
 #include "puzzle_state.h"
 namespace kernel {
@@ -15,6 +16,23 @@ namespace kernel {
 ExplorationState::ExplorationState() = default;
 
 void ExplorationState::HandleInput(const InputCommand& cmd, DataStore& data) {
+  if (cmd.type == InputType::kHelp) {
+    static bool help_loaded = false;
+    if (!help_loaded) {
+      RenderSystem::LoadHelpText("../assets/help.txt");
+      help_loaded = true;
+    }
+    RenderSystem::ToggleHelp();
+    return;
+  }
+
+  if (RenderSystem::IsHelpVisible()) {
+    if (cmd.type == InputType::kQuit) {
+      if (game_) game_->Quit();
+    }
+    return;
+  }
+
   if (cmd.type == InputType::kMove) {
     int player_idx = data.GetPlayer().entity_index;
     Entity* player = data.GetEntity(player_idx);
@@ -92,9 +110,6 @@ void ExplorationState::HandleInput(const InputCommand& cmd, DataStore& data) {
           }
           game_->PushState(std::make_unique<CombatState>(data, enemy_id,
                                                          target_obj->symbol));
-        } else {
-          RenderSystem::SetTemporaryDialogue("System",
-                                             {"You have no weapon to fight."});
         }
         return;
       } else if (target_obj->type == "exit") {
@@ -124,6 +139,13 @@ void ExplorationState::HandleInput(const InputCommand& cmd, DataStore& data) {
     }
   } else if (cmd.type == InputType::kQuit) {
     if (game_) game_->Quit();
+  } else if (cmd.type == InputType::kHelp) {
+    static bool help_loaded = false;
+    if (!help_loaded) {
+      RenderSystem::LoadHelpText("../assets/help.txt");
+      help_loaded = true;
+    }
+    RenderSystem::ToggleHelp();
   }
 }
 

@@ -4,5 +4,5 @@ id;name_for_input;damage;self_damage;defense_percent;stun_target;available_after
 3;shatter,vh;25;0;0;0;201
 4;burn,vh;30;10;0;0;202
 5;blind,vh;0;0;0;1;
-6;not_malware,vh;0;0;40;0;104
+6;not_malware,vh;0;0;40;0;
 7;erase,vh;999;0;0;0;203

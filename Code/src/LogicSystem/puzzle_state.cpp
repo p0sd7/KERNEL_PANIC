@@ -36,9 +36,9 @@ void PuzzleState::HandleInput(const InputCommand& cmd, DataStore& data) {
     return;
   }
   if (cmd.type == InputType::kConfirm) {
-    int y, x;
-    RenderSystem::GetInputPosition(y, x);
-    RenderSystem::SetCursorPosition(y, x + 17);
+    int x, y;
+    RenderSystem::GetInputPosition(x, y);
+    RenderSystem::SetCursorPosition(x, y + 13);
     std::string input = InputSystem::ReadString();
     if (input.empty()) return;
 

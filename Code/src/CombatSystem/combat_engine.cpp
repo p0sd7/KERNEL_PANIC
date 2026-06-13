@@ -6,10 +6,12 @@
 
 #include "../DataStore/data_store.h"
 #include "../Entities/entity.h"
-#include "../RenderSystem/console_renderer.h"  // для SetCombatDialogue
+#include "../RenderSystem/console_renderer.h"
 
 namespace kernel {
 namespace CombatEngine {
+
+static std::vector<int> stun_counters_;
 
 static int GetRandom(int min, int max) {
   static bool seeded = false;
@@ -27,6 +29,8 @@ void StartCombat(DataStore& data, int player_idx,
   boss_id = -1;
   boss_name.clear();
   spawn_dialogue_shown = false;
+
+  stun_counters_.resize(enemy_indices.size(), 0);
 
   if (!enemy_indices.empty()) {
     int enemy_id =
@@ -51,7 +55,6 @@ bool ApplyScript(DataStore& data, int player_idx, int script_id,
                  int& player_defense_percent, std::string& log) {
   const auto* script = data.GetScriptById(script_id);
   if (!script) {
-    log = "Script not found.\n";
     return false;
   }
 
@@ -59,13 +62,11 @@ bool ApplyScript(DataStore& data, int player_idx, int script_id,
   if (!player) return false;
 
   if (target_idx < 0 || target_idx >= static_cast<int>(enemy_indices.size())) {
-    log = "Invalid target index.\n";
     return false;
   }
   int enemy_index = enemy_indices[target_idx];
   Entity* enemy = data.GetEntity(enemy_index);
   if (!enemy || enemy->GetStat(StatType::kHp) <= 0) {
-    log = "Target is already dead.\n";
     return false;
   }
 
@@ -84,7 +85,11 @@ bool ApplyScript(DataStore& data, int player_idx, int script_id,
   }
 
   if (script->stun_target) {
-    // заглушка
+    // target_idx — порядковый номер врага (0..size-1)
+    if (target_idx >= 0 &&
+        target_idx < static_cast<int>(stun_counters_.size())) {
+      stun_counters_[target_idx] = 2;  // оглушение на 2 хода
+    }
   }
 
   return true;
@@ -95,8 +100,16 @@ void EnemyTurn(DataStore& data, int player_idx, std::vector<int>& enemy_indices,
   Entity* player = data.GetEntity(player_idx);
   if (!player) return;
   log.clear();
-  for (int idx : enemy_indices) {
-    Entity* enemy = data.GetEntity(idx);
+
+  for (size_t i = 0; i < enemy_indices.size(); ++i) {
+    // Проверяем оглушение для врага с порядковым номером i
+    if (static_cast<int>(i) < static_cast<int>(stun_counters_.size()) &&
+        stun_counters_[i] > 0) {
+      stun_counters_[i]--;
+      continue;
+    }
+
+    Entity* enemy = data.GetEntity(enemy_indices[i]);
     if (!enemy || enemy->GetStat(StatType::kHp) <= 0) continue;
 
     int damage = enemy->GetStat(StatType::kDamage);
@@ -105,7 +118,12 @@ void EnemyTurn(DataStore& data, int player_idx, std::vector<int>& enemy_indices,
     }
     int new_hp = player->GetStat(StatType::kHp) - damage;
     player->SetStat(StatType::kHp, std::max(0, new_hp));
-    int enemy_id = enemy->GetStat(StatType::kEnemyId);
+
+    // Можно добавить вывод в лог
+    // int enemy_id = enemy->GetStat(StatType::kEnemyId);
+    // const auto* templ = data.GetEnemyTemplate(enemy_id);
+    // log += templ ? templ->name : "Enemy";
+    // log += " attacks you for " + std::to_string(damage) + " damage.\n";
   }
 }
 
@@ -115,6 +133,7 @@ bool IsCombatOver(const std::vector<int>& enemy_indices,
     const Entity* enemy = data.GetEntity(idx);
     if (enemy && enemy->GetStat(StatType::kHp) > 0) return false;
   }
+  stun_counters_.clear();
   return true;
 }
 

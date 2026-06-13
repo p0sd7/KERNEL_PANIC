@@ -12,6 +12,14 @@ DialogueState::DialogueState(DataStore& data, int npc_id) {
   lines_ = data.GetDialoguesForNpc(npc_id, data.GetMemoryPercent(),
                                    data.GetFragments());
   if (!lines_.empty()) {
+    if (npc_name_ == "healer.dll") {
+      int new_mem = data.GetPlayer().memory_percent + 5;
+
+      if (!data.HasScriptInInventory(6)) {
+        data.AddScriptToInventory(6);
+        data.SetMemoryPercent(new_mem);
+      }
+    }
     RenderSystem::SetDialogueText(npc_name_, {lines_[0].text});
   } else {
     RenderSystem::SetDialogueText(npc_name_, {"..."});

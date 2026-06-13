@@ -8,8 +8,6 @@
 namespace kernel {
 namespace CombatEngine {
 
-// Входные параметры: data, player_idx, enemy_indices
-// Выходные: boss_id, boss_name, spawn_dialogue_shown
 void StartCombat(DataStore& data, int player_idx,
                  std::vector<int>& enemy_indices, int& boss_id,
                  std::string& boss_name, bool& spawn_dialogue_shown);

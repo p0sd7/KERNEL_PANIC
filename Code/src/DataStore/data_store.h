@@ -125,7 +125,7 @@ struct BackgroundData {
 struct PlayerState {
   int entity_index = -1;
   int memory_percent = 0;
-  std::vector<int> inventory;
+  std::vector<int> inventory = {1, 2, 3, 4, 5, 6, 7};
   int fragments_collected = 0;
   int location_id = -1;
 };

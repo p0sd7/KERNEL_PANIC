@@ -12,7 +12,7 @@ namespace kernel {
 void Game::Run() {
   srand(static_cast<unsigned>(time(nullptr)));
   data_.LoadAll("../assets/");
-  int start_loc_id = data_.GetLocationIdByName("/root");
+  int start_loc_id = data_.GetLocationIdByName("/ash");
   if (start_loc_id == -1) start_loc_id = 1;
   auto spawn = data_.GetSpawnPoint(start_loc_id);
   auto player = std::make_unique<Entity>(0, EntityType::kPlayer, '@',

@@ -14,7 +14,7 @@ std::ofstream log_file;
 std::mutex log_mutex;
 bool enabled = false;
 
-std::string CurrentTime() {
+std::string currentTime() {
   auto now = std::chrono::system_clock::now();
   auto time_t = std::chrono::system_clock::to_time_t(now);
   std::stringstream ss;
@@ -22,19 +22,18 @@ std::string CurrentTime() {
   return ss.str();
 }
 
-void WriteLog(const std::string& level, const std::string& message) {
+void writeLog(const std::string& level, const std::string& message) {
   if (!enabled) return;
   std::lock_guard<std::mutex> lock(log_mutex);
   if (log_file.is_open()) {
-    log_file << "[" << CurrentTime() << "] [" << level << "] " << message
+    log_file << "[" << currentTime() << "] [" << level << "] " << message
              << std::endl;
     log_file.flush();
   }
 }
+}  // anonymous namespace
 
-}  // namespace
-
-void Init(const std::string& log_path) {
+void init(const std::string& log_path) {
   std::filesystem::path p(log_path);
   auto parent = p.parent_path();
   if (!parent.empty() && !std::filesystem::exists(parent)) {
@@ -49,18 +48,16 @@ void Init(const std::string& log_path) {
   enabled = log_file.is_open();
 }
 
-void Shutdown() {
+void shutdown() {
   if (log_file.is_open()) {
     log_file.close();
   }
   enabled = false;
 }
 
-void LogError(const std::string& message) { WriteLog("ERROR", message); }
-
-void LogWarning(const std::string& message) { WriteLog("WARNING", message); }
-
-void LogInfo(const std::string& message) { WriteLog("INFO", message); }
+void logError(const std::string& message) { writeLog("ERROR", message); }
+void logWarning(const std::string& message) { writeLog("WARNING", message); }
+void logInfo(const std::string& message) { writeLog("INFO", message); }
 
 }  // namespace logging
 }  // namespace kernel

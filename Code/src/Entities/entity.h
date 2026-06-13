@@ -6,14 +6,7 @@
 
 namespace kernel {
 
-enum class EntityType {
-  kPlayer,
-  kNpc,
-  kItem,
-  kEnemy,
-  kTrap,
-  kExit,
-};
+enum class EntityType { kPlayer, kNpc, kItem, kEnemy, kTrap, kExit };
 
 enum class StatType {
   kHp,
@@ -25,7 +18,7 @@ enum class StatType {
   kNpcId,
   kEnemyId,
   kTrapDamage,
-  kCount  // Must be last
+  kCount  // must be last
 };
 
 class Entity : public Renderable {
@@ -33,21 +26,14 @@ class Entity : public Renderable {
   Entity(int id, EntityType type, char symbol, int x, int y);
   Entity(int id, EntityType type, char symbol);
 
-  char Symbol() const override { return symbol_; }
-  Pair Position() const override { return {x_, y_}; }
+  char symbol() const override { return symbol_; }
+  Pair position() const override { return {x_, y_}; }
 
-  void SetPosition(int x, int y) {
-    x_ = x;
-    y_ = y;
-  }
-
-  int GetStat(StatType type) const { return stats_[static_cast<size_t>(type)]; }
-  void SetStat(StatType type, int value) {
-    stats_[static_cast<size_t>(type)] = value;
-  }
-
-  EntityType GetType() const { return type_; }
-  int GetId() const { return id_; }
+  void setPosition(int x, int y);
+  int getStat(StatType type) const;
+  void setStat(StatType type, int value);
+  EntityType getType() const { return type_; }
+  int getId() const { return id_; }
 
  private:
   int id_;

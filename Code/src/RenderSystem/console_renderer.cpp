@@ -5,45 +5,10 @@
 #include <chrono>
 #include <clocale>
 #include <fstream>
-#include <string>
-#include <vector>
-
-#include "../DataStore/data_store.h"
-#include "../Entities/entity.h"
 
 namespace kernel {
-namespace RenderSystem {
 
-static int screen_width_;
-static int screen_height_;
-static int map_width_;
-static int map_height_;
-static int map_offset_x_;
-static int map_offset_y_;
-static int inventory_y_;
-static int inventory_x_;
-static int inventory_width_;
-static int dialog_y_;
-static int dialog_height_;
-static int bar_width_;
-
-static int input_y_ = 0;
-static int input_x_ = 0;
-
-static std::chrono::steady_clock::time_point g_dialog_timer_start;
-static bool g_dialog_timer_active = false;
-static int g_dialog_timer_seconds = 5;
-
-static std::vector<std::string> g_help_lines;
-static bool g_help_visible = false;
-
-static std::vector<std::string> g_dialog_lines = {"..."};
-static std::string g_dialog_target = "Silence";
-
-static std::vector<std::string> g_combat_dialog_lines;
-static std::string g_combat_dialog_target;
-
-void Init(const InterfaceConfig& config) {
+void ConsoleRenderer::init(const InterfaceConfig& config) {
   setlocale(LC_ALL, "");
   screen_width_ = config.screen_width;
   screen_height_ = config.screen_height;
@@ -66,47 +31,49 @@ void Init(const InterfaceConfig& config) {
   nodelay(stdscr, TRUE);
 }
 
-void Shutdown() { endwin(); }
+void ConsoleRenderer::shutdown() { endwin(); }
 
-void FlushInput() { flushinp(); }
+void ConsoleRenderer::flushInput() { flushinp(); }
 
-void Clear() { ::clear(); }
+void ConsoleRenderer::clear() { ::clear(); }
 
-void DrawHelpScreen() {
-  clear();
+void ConsoleRenderer::present() { refresh(); }
+
+void ConsoleRenderer::drawHelpScreen() {
+  ::clear();
   int y = 2;
-  for (const auto& line : g_help_lines) {
+  for (const auto& line : help_lines_) {
     if (y >= screen_height_ - 2) break;
     mvprintw(y++, 2, "%s", line.c_str());
   }
   mvprintw(screen_height_ - 2, 2, "Press H again to close help.");
 }
 
-void LoadHelpText(const std::string& path) {
+void ConsoleRenderer::loadHelpText(const std::string& path) {
   std::ifstream file(path);
-  g_help_lines.clear();
+  help_lines_.clear();
   if (!file.is_open()) {
-    g_help_lines.push_back("Help file not found.");
+    help_lines_.push_back("Help file not found.");
     return;
   }
   std::string line;
   while (std::getline(file, line)) {
     if (!line.empty() && line.back() == '\r') line.pop_back();
-    g_help_lines.push_back(line);
+    help_lines_.push_back(line);
   }
 }
 
-void ToggleHelp() { g_help_visible = !g_help_visible; }
+void ConsoleRenderer::toggleHelp() { help_visible_ = !help_visible_; }
 
-bool IsHelpVisible() { return g_help_visible; }
+bool ConsoleRenderer::isHelpVisible() const { return help_visible_; }
 
-void DrawLocationName(const std::string& name) {
+void ConsoleRenderer::drawLocationName(const std::string& name) {
   int x = map_offset_x_ + map_width_ + 2;
   int y = map_offset_y_ - 3;
   mvprintw(y, x, "%s", name.c_str());
 }
 
-void DrawTopBar(int hp, int max_hp, int memory) {
+void ConsoleRenderer::drawTopBar(int hp, int max_hp, int memory) {
   mvprintw(0, 0, "HP: %3d%% [", hp, max_hp);
   int hp_filled = (hp * bar_width_) / max_hp;
   for (int i = 0; i < bar_width_; ++i) addch(i < hp_filled ? '#' : '-');
@@ -117,57 +84,59 @@ void DrawTopBar(int hp, int max_hp, int memory) {
   printw("]");
 }
 
-void SetDialogueText(const std::string& target,
-                     const std::vector<std::string>& lines) {
-  g_dialog_target = target;
-  g_dialog_lines = lines;
-  g_dialog_timer_active = false;
+void ConsoleRenderer::setDialogueText(const std::string& target,
+                                      const std::vector<std::string>& lines) {
+  dialog_target_ = target;
+  dialog_lines_ = lines;
+  dialog_timer_active_ = false;
 }
 
-void SetTemporaryDialogue(const std::string& target,
-                          const std::vector<std::string>& lines, int seconds) {
-  SetDialogueText(target, lines);
-  g_dialog_timer_active = true;
-  g_dialog_timer_start = std::chrono::steady_clock::now();
-  g_dialog_timer_seconds = seconds;
+void ConsoleRenderer::setTemporaryDialogue(
+    const std::string& target, const std::vector<std::string>& lines,
+    int seconds) {
+  setDialogueText(target, lines);
+  dialog_timer_active_ = true;
+  dialog_timer_start_ = std::chrono::steady_clock::now();
+  dialog_timer_seconds_ = seconds;
 }
 
-void SetCombatDialogue(const std::string& target,
-                       const std::vector<std::string>& lines) {
-  g_combat_dialog_target = target;
-  g_combat_dialog_lines = lines;
+void ConsoleRenderer::setCombatDialogue(const std::string& target,
+                                        const std::vector<std::string>& lines) {
+  combat_dialog_target_ = target;
+  combat_dialog_lines_ = lines;
 }
 
-void DrawExploration(const DataStore& data, int player_idx) {
-  int loc_id = data.GetPlayer().location_id;
-  const auto* location = data.GetLocationById(loc_id);
+void ConsoleRenderer::drawExploration(const DataStore& data, int player_idx) {
+  int loc_id = data.getPlayer().location_id;
+  const auto* location = data.getLocationById(loc_id);
   std::string loc_name = location ? location->name : "unknown";
 
-  if (g_help_visible) {
-    DrawHelpScreen();
-    Present();
+  if (help_visible_) {
+    drawHelpScreen();
     return;
   }
-  DrawLocationName(loc_name);
+
+  drawLocationName(loc_name);
   if (!location) return;
 
   std::vector<std::string> grid(map_height_, std::string(map_width_, '.'));
-  const auto& bg = data.GetBackground(loc_id);
+  const auto& bg = data.getBackground(loc_id);
   if (!bg.lines.empty()) grid = bg.lines;
 
-  DrawInventory(data, player_idx);
-  if (g_dialog_timer_active) {
+  drawInventory(data, player_idx);
+
+  if (dialog_timer_active_) {
     auto now = std::chrono::steady_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
-                       now - g_dialog_timer_start)
+                       now - dialog_timer_start_)
                        .count();
-    if (elapsed >= g_dialog_timer_seconds) {
-      SetDialogueText("Silence", {"..."});
+    if (elapsed >= dialog_timer_seconds_) {
+      setDialogueText("Silence", {"..."});
     }
   }
-  DrawDialogue(g_dialog_target, g_dialog_lines);
+  drawDialogue(dialog_target_, dialog_lines_);
 
-  const auto& objects = data.GetMapObjects(loc_id);
+  const auto& objects = data.getMapObjects(loc_id);
   for (const auto& obj : objects) {
     if (obj.type == "player") continue;
     int x = obj.x, y = obj.y;
@@ -175,9 +144,9 @@ void DrawExploration(const DataStore& data, int player_idx) {
       grid[y][x] = obj.symbol;
   }
 
-  const Entity* player = data.GetEntity(player_idx);
+  const Entity* player = data.getEntity(player_idx);
   if (player) {
-    int px = player->Position().x, py = player->Position().y;
+    int px = player->position().x, py = player->position().y;
     if (px >= 0 && px < map_width_ && py >= 0 && py < map_height_)
       grid[py][px] = '@';
   }
@@ -185,48 +154,48 @@ void DrawExploration(const DataStore& data, int player_idx) {
   for (int y = 0; y < map_height_; ++y)
     mvprintw(map_offset_y_ + y, map_offset_x_, "%s", grid[y].c_str());
 
-  int hp = player ? player->GetStat(StatType::kHp) : 0;
-  int max_hp = player ? player->GetStat(StatType::kMaxHp) : 100;
-  int memory = data.GetMemoryPercent();
-  DrawTopBar(hp, max_hp, memory);
+  int hp = player ? player->getStat(StatType::kHp) : 0;
+  int max_hp = player ? player->getStat(StatType::kMaxHp) : 100;
+  int memory = data.getMemoryPercent();
+  drawTopBar(hp, max_hp, memory);
 }
 
-void DrawInventory(const DataStore& data, int player_idx) {
-  const auto& scripts = data.GetInventoryScripts();
+void ConsoleRenderer::drawInventory(const DataStore& data, int player_idx) {
+  const auto& scripts = data.getInventoryScripts();
   mvprintw(inventory_y_, inventory_x_, "Inventory:");
   for (size_t i = 0; i < scripts.size(); ++i) {
-    const auto* scr = data.GetScriptById(scripts[i]);
+    const auto* scr = data.getScriptById(scripts[i]);
     std::string name = scr ? scr->name_for_input : "unknown";
     mvprintw(inventory_y_ + 1 + i, inventory_x_, "- %s", name.c_str());
   }
 }
 
-void DrawCombat(const DataStore& data, int player_idx,
-                const std::vector<int>& enemy_indices,
-                const std::string& /*log*/, int highlight_enemy,
-                bool is_boss_fight, int boss_id) {
-  clear();
-
-  const Entity* player = data.GetEntity(player_idx);
-  int hp = player ? player->GetStat(StatType::kHp) : 0;
-  int max_hp = player ? player->GetStat(StatType::kMaxHp) : 100;
-  int memory = data.GetMemoryPercent();
-  DrawTopBar(hp, max_hp, memory);
+void ConsoleRenderer::drawCombat(const DataStore& data, int player_idx,
+                                 const std::vector<int>& enemy_indices,
+                                 const std::string& /*log*/,
+                                 int highlight_enemy, bool is_boss_fight,
+                                 int boss_id) {
+  ::clear();
+  const Entity* player = data.getEntity(player_idx);
+  int hp = player ? player->getStat(StatType::kHp) : 0;
+  int max_hp = player ? player->getStat(StatType::kMaxHp) : 100;
+  int memory = data.getMemoryPercent();
+  drawTopBar(hp, max_hp, memory);
 
   int start_y = 3;
   int start_x = 2;
 
   if (is_boss_fight && boss_id != -1) {
-    const auto& art = data.GetBossArt(boss_id);
+    const auto& art = data.getBossArt(boss_id);
     for (size_t i = 0; i < art.size() && start_y + i < screen_height_ - 6;
          ++i) {
       mvprintw(start_y + i, start_x, "%s", art[i].c_str());
     }
     if (!enemy_indices.empty()) {
-      const Entity* boss = data.GetEntity(enemy_indices[0]);
+      const Entity* boss = data.getEntity(enemy_indices[0]);
       if (boss) {
-        int hp_curr = boss->GetStat(StatType::kHp);
-        int hp_max = boss->GetStat(StatType::kMaxHp);
+        int hp_curr = boss->getStat(StatType::kHp);
+        int hp_max = boss->getStat(StatType::kMaxHp);
         int percent = (hp_max > 0) ? (hp_curr * 100) / hp_max : 0;
         mvprintw(start_y + art.size() + 1, start_x, "BOSS HP: %d%%", percent);
       }
@@ -235,13 +204,13 @@ void DrawCombat(const DataStore& data, int player_idx,
     mvprintw(start_y, start_x, "Enemies:");
     for (size_t i = 0; i < enemy_indices.size(); ++i) {
       int idx = enemy_indices[i];
-      const Entity* enemy = data.GetEntity(idx);
+      const Entity* enemy = data.getEntity(idx);
       if (!enemy) continue;
-      int enemy_id = enemy->GetStat(StatType::kEnemyId);
-      const auto* templ = data.GetEnemyTemplate(enemy_id);
+      int enemy_id = enemy->getStat(StatType::kEnemyId);
+      const auto* templ = data.getEnemyTemplate(enemy_id);
       std::string name = templ ? templ->name : "Unknown";
-      int hp_curr = enemy->GetStat(StatType::kHp);
-      int hp_max = enemy->GetStat(StatType::kMaxHp);
+      int hp_curr = enemy->getStat(StatType::kHp);
+      int hp_max = enemy->getStat(StatType::kMaxHp);
       int percent = (hp_max > 0) ? (hp_curr * 100) / hp_max : 0;
       if (static_cast<int>(i) == highlight_enemy) attron(A_REVERSE);
       mvprintw(start_y + 1, start_x + i * 20, "[%d] %s %d%%", i + 1,
@@ -249,28 +218,29 @@ void DrawCombat(const DataStore& data, int player_idx,
       if (static_cast<int>(i) == highlight_enemy) attroff(A_REVERSE);
     }
   }
+
   int combat_dialog_y = screen_height_ - 8;
-  int dialog_width = screen_width_ - 4;
-  if (combat_dialog_y > 0 && !g_combat_dialog_lines.empty()) {
-    for (int i = 0; i < dialog_width; ++i) mvaddch(combat_dialog_y, i, '=');
-    mvprintw(combat_dialog_y + 1, 2, "%s", g_combat_dialog_target.c_str());
-    for (int i = 0; i < dialog_width; ++i) mvaddch(combat_dialog_y + 2, i, '=');
+  if (combat_dialog_y > 0 && !combat_dialog_lines_.empty()) {
+    for (int i = 0; i < screen_width_ - 4; ++i)
+      mvaddch(combat_dialog_y, i, '=');
+    mvprintw(combat_dialog_y + 1, 2, "%s", combat_dialog_target_.c_str());
+    for (int i = 0; i < screen_width_ - 4; ++i)
+      mvaddch(combat_dialog_y + 2, i, '=');
     int line_y = combat_dialog_y + 3;
-    for (const auto& line : g_combat_dialog_lines) {
+    for (const auto& line : combat_dialog_lines_) {
       if (line_y >= screen_height_ - 4) break;
       mvprintw(line_y++, 2, "%s", line.c_str());
     }
   }
 
-  input_y_ = screen_height_ - 3;
-  input_x_ = 2;
-  mvprintw(input_y_, input_x_, "> ");
-  move(input_y_, input_x_ + 2);
-  refresh();
+  input_row_ = screen_height_ - 3;
+  input_col_ = 2;
+  mvprintw(input_row_, input_col_, "> ");
+  move(input_row_, input_col_ + 2);
 }
 
-void DrawDialogue(const std::string& target_name,
-                  const std::vector<std::string>& lines) {
+void ConsoleRenderer::drawDialogue(const std::string& target_name,
+                                   const std::vector<std::string>& lines) {
   if (dialog_height_ < 3) return;
   for (int i = 0; i < screen_width_; ++i) mvaddch(dialog_y_, i, '=');
   mvprintw(dialog_y_ + 1, 2, "%s", target_name.c_str());
@@ -282,8 +252,8 @@ void DrawDialogue(const std::string& target_name,
   }
 }
 
-void DrawGameOver() {
-  clear();
+void ConsoleRenderer::drawGameOver() {
+  ::clear();
   attron(COLOR_PAIR(1) | A_BOLD);
   mvprintw(screen_height_ / 2, screen_width_ / 2 - 20,
            "KERNEL_PANIC: fatal error. Reason: you.");
@@ -292,8 +262,8 @@ void DrawGameOver() {
            "Press any key to reboot.");
 }
 
-void DrawFinal(const std::string& prompt) {
-  clear();
+void ConsoleRenderer::drawFinal(const std::string& prompt) {
+  ::clear();
   mvprintw(screen_height_ / 2 - 2,
            screen_width_ / 2 - static_cast<int>(prompt.length()) / 2, "%s",
            prompt.c_str());
@@ -301,17 +271,14 @@ void DrawFinal(const std::string& prompt) {
            "Do you want to remember? [NO] [YES]");
 }
 
-void Present() { refresh(); }
-
-void GetInputPosition(int& x, int& y) {
-  x = screen_height_ - 3;
-  y = 4;
+void ConsoleRenderer::getInputPosition(int& row, int& col) const {
+  row = input_row_;
+  col = input_col_;
 }
 
-void SetCursorPosition(int x, int y) {
-  move(x, y);
+void ConsoleRenderer::setCursorPosition(int row, int col) {
+  move(row, col);
   refresh();
 }
 
-}  // namespace RenderSystem
 }  // namespace kernel

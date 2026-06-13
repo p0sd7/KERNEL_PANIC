@@ -3,16 +3,15 @@
 namespace kernel {
 
 struct Pair {
-  int x;
-  int y;
+  int x = 0;
+  int y = 0;
 };
 
 class Renderable {
  public:
   virtual ~Renderable() = default;
-
-  virtual char Symbol() const = 0;
-  virtual Pair Position() const = 0;
+  virtual char symbol() const = 0;
+  virtual Pair position() const = 0;
 };
 
-} 
+}  // namespace kernel

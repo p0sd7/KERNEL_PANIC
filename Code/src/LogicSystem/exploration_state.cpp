@@ -1,7 +1,5 @@
+// exploration_state.cpp
 #include "exploration_state.h"
-
-#include <cstdlib>
-#include <ctime>
 
 #include "../DataStore/data_store.h"
 #include "../Logging/logger.h"
@@ -11,40 +9,42 @@
 #include "final_state.h"
 #include "game.h"
 #include "puzzle_state.h"
+
 namespace kernel {
 
 ExplorationState::ExplorationState() = default;
 
-void ExplorationState::HandleInput(const InputCommand& cmd, DataStore& data) {
+void ExplorationState::handleInput(const InputCommand& cmd, DataStore& data,
+                                   ConsoleRenderer& renderer) {
   if (cmd.type == InputType::kHelp) {
     static bool help_loaded = false;
     if (!help_loaded) {
-      RenderSystem::LoadHelpText("../assets/help.txt");
+      renderer.loadHelpText("../assets/help.txt");
       help_loaded = true;
     }
-    RenderSystem::ToggleHelp();
+    renderer.toggleHelp();
     return;
   }
 
-  if (RenderSystem::IsHelpVisible()) {
+  if (renderer.isHelpVisible()) {
     if (cmd.type == InputType::kQuit) {
-      if (game_) game_->Quit();
+      if (game_) game_->quit();
     }
     return;
   }
 
   if (cmd.type == InputType::kMove) {
-    int player_idx = data.GetPlayer().entity_index;
-    Entity* player = data.GetEntity(player_idx);
+    int player_idx = data.getPlayer().entity_index;
+    Entity* player = data.getEntity(player_idx);
     if (!player) return;
 
-    int new_x = player->Position().x + cmd.dx;
-    int new_y = player->Position().y + cmd.dy;
+    int new_x = player->position().x + cmd.dx;
+    int new_y = player->position().y + cmd.dy;
 
-    int loc_id = data.GetPlayer().location_id;
-    const auto* loc = data.GetLocationById(loc_id);
+    int loc_id = data.getPlayer().location_id;
+    const auto* loc = data.getLocationById(loc_id);
     int next_loc_id = loc->next_location_id;
-    const auto& objects = data.GetMapObjects(loc_id);
+    const auto& objects = data.getMapObjects(loc_id);
 
     const MapObjectData* target_obj = nullptr;
     for (const auto& obj : objects) {
@@ -56,104 +56,95 @@ void ExplorationState::HandleInput(const InputCommand& cmd, DataStore& data) {
 
     if (target_obj) {
       if (target_obj->type == "player") {
-        data.RemoveMapObject(target_obj->location_id, target_obj->id);
+        data.removeMapObject(target_obj->location_id, target_obj->id);
       } else if (target_obj->type == "item") {
-        const auto* item = data.GetItemById(target_obj->ref_id);
+        const auto* item = data.getItemById(target_obj->ref_id);
         if (!item) {
-          logging::LogError("Unknown item id: " +
-                            std::to_string(target_obj->ref_id));
-          RenderSystem::SetTemporaryDialogue("System", {"Unknown item"});
+          renderer.setTemporaryDialogue("System", {"Unknown item"});
           return;
         }
-        int current_hp = player->GetStat(StatType::kHp);
-        int max_hp = player->GetStat(StatType::kMaxHp);
+        int current_hp = player->getStat(StatType::kHp);
+        int max_hp = player->getStat(StatType::kMaxHp);
         switch (item->type) {
           case ItemType::kHeal:
-            player->SetStat(StatType::kHp,
+            player->setStat(StatType::kHp,
                             std::min(max_hp, current_hp + item->effect_value));
             break;
           case ItemType::kScript:
             if (item->script_id != -1)
-              data.AddScriptToInventory(item->script_id);
+              data.addScriptToInventory(item->script_id);
             break;
           case ItemType::kTrap:
-            player->SetStat(StatType::kHp, current_hp - item->effect_value);
-            RenderSystem::SetTemporaryDialogue("LNK2019", {"hurts, isn't it?"});
+            player->setStat(StatType::kHp, current_hp - item->effect_value);
+            renderer.setTemporaryDialogue("LNK2019", {"hurts, isn't it?"});
             break;
           case ItemType::kMemoryFrag: {
-            data.IncrementFragments();
+            data.incrementFragments();
             int frag_id = item->effect_value;
-            const auto& fragments = data.GetMemoryFragments();
+            const auto& fragments = data.getMemoryFragments();
             auto it = fragments.find(frag_id);
             std::string msg = (it != fragments.end())
                                   ? it->second.text
                                   : "Unknown memory fragment";
-            RenderSystem::SetTemporaryDialogue("memory fragment", {msg});
+            renderer.setTemporaryDialogue("memory fragment", {msg});
             break;
           }
           default:
             return;
         }
-        data.RemoveMapObject(loc_id, target_obj->id);
+        data.removeMapObject(loc_id, target_obj->id);
       } else if (target_obj->type == "npc") {
-        game_->PushState(
+        game_->pushState(
             std::make_unique<DialogueState>(data, target_obj->ref_id));
       } else if (target_obj->type == "boss") {
-        if (next_loc_id != -1 && !data.GetInventoryScripts().empty()) {
-          data.GetPlayer().location_id = next_loc_id;
-          auto spawn = data.GetSpawnPoint(next_loc_id);
-          player->SetPosition(spawn.first, spawn.second);
-          int enemy_id = target_obj->ref_id;
-          if (!data.GetEnemyTemplate(enemy_id)) {
-            RenderSystem::SetTemporaryDialogue("System", {"Unknown boss."});
-            return;
-          }
-          game_->PushState(std::make_unique<CombatState>(data, enemy_id,
-                                                         target_obj->symbol));
+        if (next_loc_id != -1 && !data.getInventoryScripts().empty()) {
+          data.getPlayer().location_id = next_loc_id;
+          auto spawn = data.getSpawnPoint(next_loc_id);
+          player->setPosition(spawn.first, spawn.second);
+          game_->pushState(std::make_unique<CombatState>(
+              data, target_obj->ref_id, target_obj->symbol));
         }
         return;
       } else if (target_obj->type == "exit") {
-        if (next_loc_id != -1 && !data.GetInventoryScripts().empty()) {
-          data.GetPlayer().location_id = next_loc_id;
-          auto spawn = data.GetSpawnPoint(next_loc_id);
-          player->SetPosition(spawn.first, spawn.second);
-          const auto* new_loc = data.GetLocationById(next_loc_id);
+        if (next_loc_id != -1 && !data.getInventoryScripts().empty()) {
+          data.getPlayer().location_id = next_loc_id;
+          auto spawn = data.getSpawnPoint(next_loc_id);
+          player->setPosition(spawn.first, spawn.second);
+          const auto* new_loc = data.getLocationById(next_loc_id);
           if (new_loc && new_loc->forced_combat_on_enter) {
-            game_->PushState(std::make_unique<CombatState>(data, next_loc_id));
-            return;
+            game_->pushState(std::make_unique<CombatState>(data, next_loc_id));
           }
         } else {
-          RenderSystem::SetTemporaryDialogue("System", {"No exit."});
+          renderer.setTemporaryDialogue("System", {"No exit."});
         }
         return;
       } else if (target_obj->type == "puzzle") {
-        game_->PushState(std::make_unique<PuzzleState>(data, loc_id));
+        game_->pushState(std::make_unique<PuzzleState>(data, loc_id));
         return;
       }
       return;
     }
-    int max_x = data.GetInterfaceConfig().map_width - 1;
-    int max_y = data.GetInterfaceConfig().map_height - 1;
+    int max_x = data.getInterfaceConfig().map_width - 1;
+    int max_y = data.getInterfaceConfig().map_height - 1;
     if (new_x > 0 && new_x < max_x && new_y > 0 && new_y < max_y) {
-      player->SetPosition(new_x, new_y);
+      player->setPosition(new_x, new_y);
     }
   } else if (cmd.type == InputType::kQuit) {
-    if (game_) game_->Quit();
+    if (game_) game_->quit();
   } else if (cmd.type == InputType::kHelp) {
     static bool help_loaded = false;
     if (!help_loaded) {
-      RenderSystem::LoadHelpText("../assets/help.txt");
+      renderer.loadHelpText("../assets/help.txt");
       help_loaded = true;
     }
-    RenderSystem::ToggleHelp();
+    renderer.toggleHelp();
   }
 }
 
-void ExplorationState::Update(float /*delta*/, DataStore& /*data*/) {}
+void ExplorationState::update(float /*delta*/, DataStore& /*data*/) {}
 
-void ExplorationState::Draw(const DataStore& data) {
-  int player_idx = data.GetPlayer().entity_index;
-  RenderSystem::DrawExploration(data, player_idx);
+void ExplorationState::draw(const DataStore& data, ConsoleRenderer& renderer) {
+  renderer.drawExploration(data, data.getPlayer().entity_index);
 }
 
 }  // namespace kernel

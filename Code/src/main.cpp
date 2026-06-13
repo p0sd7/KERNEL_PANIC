@@ -1,12 +1,10 @@
 #include "Logging/logger.h"
 #include "LogicSystem/game.h"
-#include "RenderSystem/console_renderer.h"
 
 int main() {
-  kernel::logging::Init("logs/kernel_panic.log");
-  srand(time(nullptr));
+  kernel::logging::init("logs/kernel_panic.log");
   kernel::Game game;
-  game.Run();
-  kernel::logging::Shutdown();
+  game.run();
+  kernel::logging::shutdown();
   return 0;
 }

@@ -64,7 +64,7 @@ struct EnemyGroup {
 
 struct DialogueLine {
   int id = -1;
-  int npc_id;
+  int npc_id = -1;
   int condition_memory_min = 0;
   int condition_memory_max = 100;
   int condition_fragments = -1;
@@ -125,64 +125,62 @@ struct BackgroundData {
 struct PlayerState {
   int entity_index = -1;
   int memory_percent = 0;
-  std::vector<int> inventory = {};
+  std::vector<int> inventory;
   int fragments_collected = 0;
   int location_id = -1;
 };
 
 class DataStore {
  public:
-  void LoadAll(const std::string& assets_path);
-
-  int AddEntity(std::unique_ptr<Entity> entity);
-  void RemoveEntity(int index);
-  Entity* GetEntity(int index) const;
-  const std::vector<std::unique_ptr<Entity>>& GetEntities() const {
+  void loadAll(const std::string& assets_path);
+  void reloadAssets();
+  int addEntity(std::unique_ptr<Entity> entity);
+  void removeEntity(int index);
+  void removeEntities(const std::vector<int>& indices);
+  Entity* getEntity(int index) const;
+  const std::vector<std::unique_ptr<Entity>>& getEntities() const {
     return entities_;
   }
 
-  const LocationData* GetLocationById(int id) const;
-  int GetLocationIdByName(const std::string& loc_name) const;
-  const std::vector<MapObjectData>& GetMapObjects(int location_id) const;
-  const EnemyTemplate* GetEnemyTemplate(int id) const;
-  const ScriptData* GetScriptById(int id) const;
-  int GetScriptIdByName(const std::string& name) const;
-  std::vector<DialogueLine> GetDialoguesForNpc(int npc_id, int memory,
+  const LocationData* getLocationById(int id) const;
+  int getLocationIdByName(const std::string& name) const;
+  const std::vector<MapObjectData>& getMapObjects(int location_id) const;
+  const EnemyTemplate* getEnemyTemplate(int id) const;
+  const ScriptData* getScriptById(int id) const;
+  int getScriptIdByName(const std::string& name) const;
+  std::vector<DialogueLine> getDialoguesForNpc(int npc_id, int memory,
                                                int fragments) const;
-  const ItemData* GetItemById(int id) const;
-  const std::vector<EnemyGroup>& GetEnemyGroup(int location_id) const;
-  const std::map<int, MemoryFragmentData>& GetMemoryFragments() const;
-  const PuzzleData* GetPuzzleByLocation(int location_id) const;
-  const BackgroundData& GetBackground(int location_id) const;
+  const ItemData* getItemById(int id) const;
+  const std::vector<EnemyGroup>& getEnemyGroup(int location_id) const;
+  const std::map<int, MemoryFragmentData>& getMemoryFragments() const;
+  const PuzzleData* getPuzzleByLocation(int location_id) const;
+  const BackgroundData& getBackground(int location_id) const;
 
-  void RemoveMapObject(int location_id, int object_id);
+  void removeMapObject(int location_id, int object_id);
 
-  PlayerState& GetPlayer() { return player_; }
-  const PlayerState& GetPlayer() const { return player_; }
+  PlayerState& getPlayer() { return player_; }
+  const PlayerState& getPlayer() const { return player_; }
 
-  void AddScriptToInventory(int script_id);
-  bool HasScriptInInventory(int script_id) const;
-  const std::vector<int>& GetInventoryScripts() const {
-    return player_.inventory;
-  }
-  void SetMemoryPercent(int percent);
-  int GetMemoryPercent() const { return player_.memory_percent; }
-  void IncrementFragments();
-  int GetFragments() const { return player_.fragments_collected; }
-  void ResetPlayerForNewCycle();
+  void addScriptToInventory(int script_id);
+  bool hasScriptInInventory(int script_id) const;
+  const std::vector<int>& getInventoryScripts() const;
+  void setMemoryPercent(int percent);
+  int getMemoryPercent() const;
+  void incrementFragments();
+  int getFragments() const;
+  void resetPlayerForNewCycle();
 
-  const std::string& GetNpcName(int npc_id) const;
-  std::pair<int, int> GetSpawnPoint(int loc_id) const;
-  const InterfaceConfig& GetInterfaceConfig() const {
-    return interface_config_;
-  }
+  const std::string& getNpcName(int npc_id) const;
+  std::pair<int, int> getSpawnPoint(int loc_id) const;
+  const InterfaceConfig& getInterfaceConfig() const;
 
-  const std::vector<std::string>& GetBossArt(int enemy_id) const;
-  const std::map<int, ScriptData>& GetScripts() const { return scripts_; }
+  const std::vector<std::string>& getBossArt(int enemy_id) const;
+  const std::map<int, ScriptData>& getScripts() const { return scripts_; }
 
  private:
   std::vector<std::unique_ptr<Entity>> entities_;
   PlayerState player_;
+  std::string assets_path_;
 
   std::map<int, LocationData> locations_;
   std::map<int, std::vector<MapObjectData>> map_objects_;

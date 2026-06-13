@@ -1,3 +1,4 @@
+// exploration_state.h
 #pragma once
 
 #include "base_state.h"
@@ -7,9 +8,10 @@ namespace kernel {
 class ExplorationState : public BaseState {
  public:
   ExplorationState();
-  void HandleInput(const InputCommand& cmd, DataStore& data) override;
-  void Update(float delta, DataStore& data) override;
-  void Draw(const DataStore& data) override;
+  void handleInput(const InputCommand& cmd, DataStore& data,
+                   ConsoleRenderer& renderer) override;
+  void update(float delta, DataStore& data) override;
+  void draw(const DataStore& data, ConsoleRenderer& renderer) override;
 };
 
 }  // namespace kernel

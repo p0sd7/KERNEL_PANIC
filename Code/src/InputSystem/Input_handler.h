@@ -5,8 +5,8 @@
 namespace kernel {
 namespace InputSystem {
 
-InputCommand PollEvents();
-std::string ReadString();
+InputCommand pollEvents();
+std::string readString();
 
 }  // namespace InputSystem
 }  // namespace kernel

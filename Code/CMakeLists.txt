@@ -22,6 +22,7 @@ set(SOURCES
     src/DataStore/data_store.cpp
     src/DataStore/csv_loader.cpp
     src/Logging/logger.cpp
+    src/Random/random_utils.cpp
 )
 
 add_executable(kernel_panic ${SOURCES})

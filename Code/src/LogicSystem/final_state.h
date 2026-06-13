@@ -1,7 +1,5 @@
 #pragma once
 
-#include <string>
-
 #include "base_state.h"
 
 namespace kernel {
@@ -9,9 +7,10 @@ namespace kernel {
 class FinalState : public BaseState {
  public:
   FinalState();
-  void HandleInput(const InputCommand& cmd, DataStore& data) override;
-  void Update(float delta, DataStore& data) override;
-  void Draw(const DataStore& data) override;
+  void handleInput(const InputCommand& cmd, DataStore& data,
+                   ConsoleRenderer& renderer) override;
+  void update(float delta, DataStore& data) override;
+  void draw(const DataStore& data, ConsoleRenderer& renderer) override;
 
  private:
   enum class Step {

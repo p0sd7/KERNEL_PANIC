@@ -7,48 +7,38 @@
 namespace kernel {
 namespace InputSystem {
 
-InputCommand PollEvents() {
+InputCommand pollEvents() {
   int ch = getch();
   if (ch == ERR) {
     return InputCommand{InputType::kNone, 0, 0, ""};
   }
-  InputCommand cmd;
   switch (ch) {
     case KEY_UP:
     case 'w':
-      cmd = {InputType::kMove, 0, -1};
-      break;
+      return {InputType::kMove, 0, -1};
     case KEY_DOWN:
     case 's':
-      cmd = {InputType::kMove, 0, 1};
-      break;
+      return {InputType::kMove, 0, 1};
     case KEY_LEFT:
     case 'a':
-      cmd = {InputType::kMove, -1, 0};
-      break;
+      return {InputType::kMove, -1, 0};
     case KEY_RIGHT:
     case 'd':
-      cmd = {InputType::kMove, 1, 0};
-      break;
+      return {InputType::kMove, 1, 0};
     case '\n':
-      cmd = {InputType::kConfirm, 0, 0, ""};
-      break;
+      return {InputType::kConfirm, 0, 0, ""};
     case 'q':
     case 'Q':
-      cmd = {InputType::kQuit};
-      break;
+      return {InputType::kQuit};
     case 'h':
     case 'H':
-      cmd = {InputType::kHelp};
-      break;
+      return {InputType::kHelp};
     default:
-      cmd = {InputType::kNone};
-      break;
+      return {InputType::kNone};
   }
-  return cmd;
 }
 
-std::string ReadString() {
+std::string readString() {
   nodelay(stdscr, FALSE);
   echo();
   curs_set(1);

@@ -158,6 +158,8 @@ void ConsoleRenderer::drawExploration(const DataStore& data, int player_idx) {
   int max_hp = player ? player->getStat(StatType::kMaxHp) : 100;
   int memory = data.getMemoryPercent();
   drawTopBar(hp, max_hp, memory);
+  input_row_ = 0;
+  input_col_ = 0;
 }
 
 void ConsoleRenderer::drawInventory(const DataStore& data, int player_idx) {

@@ -62,6 +62,9 @@ void FinalState::handleInput(const InputCommand& cmd, DataStore& data,
 
   if (input_active_ && cmd.type == InputType::kConfirm) {
     renderer.flushInput();
+    int row, col;
+    renderer.getInputPosition(row, col);
+    renderer.setCursorPosition(row + 21, col + 40);
     std::string input = InputSystem::readString();
     if (input.empty()) return;
 
